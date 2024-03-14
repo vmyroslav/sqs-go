@@ -1,0 +1,91 @@
+run:
+  go: '1.21'
+  timeout: 5m
+  output:
+    format: tab
+  skip-dirs:
+    - vendor
+  issue-exit-code: 1
+
+linters-settings:
+  errcheck:
+    check-type-assertions: true
+  govet:
+    check-shadowing: true
+    enable:
+      - fieldalignment
+  golint:
+    min-confidence: 0.1
+  maligned:
+    suggest-new: true
+  goconst:
+    min-len: 2
+    min-occurrences: 2
+  misspell:
+    locale: US
+  lll:
+    line-length: 140
+  gocritic:
+    enabled-tags:
+      - performance
+      - style
+      - experimental
+      - opinionated
+
+linters:
+  disable-all: true
+  enable:
+    - revive
+    - govet
+    - unconvert
+    - megacheck
+    - unused
+    - gas
+    - gocyclo
+    - dupl
+    - misspell
+    - unparam
+    - typecheck
+    - ineffassign
+    - gochecknoinits
+    - exportloopref
+    - gocritic
+    - govet
+    - nakedret
+    - gosimple
+    - prealloc
+    - bodyclose
+    - dogsled
+    - errcheck
+    - gofmt
+    - exportloopref
+    - exhaustive
+    - staticcheck
+    - stylecheck
+    - goconst
+    - whitespace
+    - wsl
+  fast: false
+
+issues:
+  exclude-rules:
+    - text: "at least one file in a package should have a package comment"
+      linters:
+        - stylecheck
+    - text: "should have a package comment"
+      linters:
+        - revive
+    - text: "should have comment or be unexported"
+      linters:
+        - revive
+    - text: "whyNoLint"
+      linters:
+        - gocritic
+    - path: _test\.go
+      linters:
+        - gosec
+        - dupl
+  exclude-use-default: false
+
+service:
+  golangci-lint-version: 1.55.x

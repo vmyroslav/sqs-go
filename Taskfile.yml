@@ -1,0 +1,26 @@
+version: '3'
+
+dotenv: ['.env'] # take variables from .env file
+
+env:
+  OK_COLOR: '\033[32;01m'
+  NO_COLOR: '\033[0m'
+
+tasks:
+  default:
+    cmds:
+      - task --list-all
+  lint:
+    cmds:
+      - golangci-lint run -c .golangci.yml
+  test:
+    cmds:
+      - go test -gcflags=-l -covermode=atomic -race ./...
+  update-deps:
+    desc: Update dependencies
+    cmds:
+      - go get -u -d ./...
+  fumpt:
+    desc: Gofumpt project files
+    cmds:
+      - find . -name '*.go' -type f -exec gofumpt -w {} +

@@ -1,0 +1,11 @@
+/.DS_Store
+/.idea/
+
+/bin/*
+/.env
+
+/.serverless
+/terraform/.terraform.lock.hcl
+/terraform/.terraform/
+/unit.coverprofile
+/credentials.json
