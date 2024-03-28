@@ -9,3 +9,5 @@
 /terraform/.terraform/
 /unit.coverprofile
 /credentials.json
+/vendor/
+/examples/tmp/

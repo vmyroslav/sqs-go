@@ -1,0 +1,42 @@
+version: "3.8"
+
+services:
+  localstack:
+    container_name: sqs_examples_aws_localstack
+    image: localstack/localstack:3.2
+    ports:
+      - "4566:4566"            # LocalStack Gateway
+      - "4510-4559:4510-4559"  # external services port range
+    environment:
+      # LocalStack configuration: https://docs.localstack.cloud/references/configuration/
+      QUEUE_NAME: '${SQS_QUEUE_NAME:-sqs-test-queue}'
+      AWS_KEY: '${AWS_KEY:-foo}'
+      AWS_SECRET: '${AWS_SECRET:-bar}'
+      LOCALSTACK_DUMMY_ID: '${LOCALSTACK_DUMMY_ID:-000000000000}'
+      LOCALSTACK_HOST: '${LOCALSTACK_HOST:-localhost}'
+      SERVICES: sqs
+      DOCKER_HOST: unix:///var/run/docker.sock
+      HOSTNAME_EXTERNAL: localstack
+      SQS_DISABLE_CLOUDWATCH_METRICS: 1
+      DEFAULT_REGION: '${AWS_REGION:-eu-central-1}'
+      USE_SINGLE_REGION: 1
+      DEBUG: 1
+    healthcheck:
+      test: [ "CMD-SHELL", "curl --silent --fail localhost:4566/_localstack/health | grep '\"sqs\": \"running\"'" ]
+      interval: 3s
+      timeout: 10s
+      start_period: 10s
+    volumes:
+      - ./setup.sh:/etc/localstack/init/ready.d/init-aws.sh
+      - ./tmp:/var/lib/localstack
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - sqs_examples
+
+networks:
+  sqs_examples:
+    driver: bridge
+
+volumes:
+  localstack_data:
+    driver: local
