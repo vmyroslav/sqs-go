@@ -11,8 +11,8 @@ import (
 
 type Message interface{}
 
-// Handler is a generic interface for message handlers. The type parameter T
-// specifies the type of message the handler accepts.
+// Handler is a generic interface for message handlers.
+// The type parameter T specifies the type of message the handler accepts.
 type Handler[T Message] interface {
 	Handle(ctx context.Context, msg T) error
 }
@@ -25,11 +25,11 @@ func (f HandlerFunc[T]) Handle(ctx context.Context, msg T) error {
 
 type Middleware[T Message] func(next HandlerFunc[T]) HandlerFunc[T]
 
-// Poller is an interface for polling messages from SQS.
+// poller is an interface for polling messages from SQS.
 // The messages are transformed to the internal format and sent to the channel.
 // The error channel is used to report errors that occurred during polling.
 // The implementation should be able to handle context cancellation.
-type Poller interface {
+type poller interface {
 	Poll(ctx context.Context, queueURL string, ch chan<- sqstypes.Message) error
 }
 
@@ -54,7 +54,7 @@ type Processor[T Message] interface {
 
 type ConsumerSQS[T Message] struct {
 	cfg            Config
-	poller         Poller
+	poller         poller
 	sqsClient      *sqs.Client
 	messageAdapter MessageAdapter[T]
 	confirmer      Confirmer
@@ -69,7 +69,7 @@ type ConsumerSQS[T Message] struct {
 
 func NewConsumerSQS[T Message](
 	cfg Config,
-	poller Poller,
+	poller poller,
 	sqsClient *sqs.Client,
 	messageAdapter MessageAdapter[T],
 	processor Processor[T],
@@ -179,7 +179,7 @@ func newMessageHandlerFunc[T Message](handler Handler[T]) HandlerFunc[T] {
 	}
 }
 
-//go:generate mockery --name=sqsConnector --output=mocks --filename=sqs_connector.go
+//go:generate mockery --name=sqsConnector --filename=mock_sqs_connector.go --inpackage
 type sqsConnector interface {
 	ReceiveMessage(ctx context.Context, params *sqs.ReceiveMessageInput, optFns ...func(*sqs.Options)) (*sqs.ReceiveMessageOutput, error)
 	DeleteMessage(ctx context.Context, params *sqs.DeleteMessageInput, optFns ...func(*sqs.Options)) (*sqs.DeleteMessageOutput, error)

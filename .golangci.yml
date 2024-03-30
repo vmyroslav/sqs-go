@@ -1,23 +1,17 @@
 run:
-  go: '1.21'
+  go: '1.22'
   timeout: 5m
-  output:
-    format: tab
-  skip-dirs:
-    - vendor
-  issue-exit-code: 1
+output:
+  formats:
+    - format: colored-line-number
+      path: stdout
 
 linters-settings:
   errcheck:
     check-type-assertions: true
   govet:
-    check-shadowing: true
     enable:
       - fieldalignment
-  golint:
-    min-confidence: 0.1
-  maligned:
-    suggest-new: true
   goconst:
     min-len: 2
     min-occurrences: 2
@@ -35,35 +29,56 @@ linters-settings:
 linters:
   disable-all: true
   enable:
-    - revive
-    - govet
-    - unconvert
-    - megacheck
-    - unused
-    - gas
-    - gocyclo
-    - dupl
-    - misspell
-    - unparam
-    - typecheck
-    - ineffassign
-    - gochecknoinits
-    - exportloopref
-    - gocritic
-    - govet
-    - nakedret
-    - gosimple
-    - prealloc
     - bodyclose
+    - containedctx
+    - copyloopvar
+    - cyclop
+    - depguard
     - dogsled
+    - dupl
     - errcheck
-    - gofmt
-    - exportloopref
+    - errchkjson
+    - errname
     - exhaustive
+    - exportloopref
+    - gas
+    - gci
+    - gochecknoinits
+    - goconst
+    - gocritic
+    - gocyclo
+    - gofmt
+    - gosec
+    - gosimple
+    - govet
+    - importas
+    - ineffassign
+    - interfacebloat
+    - ireturn
+    - loggercheck
+    - megacheck
+    - mirror
+    - misspell
+    - nakedret
+    - nestif
+    - noctx
+    - prealloc
+    - reassign
+    - revive
+    - sloglint
     - staticcheck
     - stylecheck
-    - goconst
+    - tagliatelle
+    - tenv
+    - testifylint
+    - thelper
+    - tparallel
+    - typecheck
+    - unconvert
+    - unparam
+    - unused
     - whitespace
+    - wrapcheck
     - wsl
   fast: false
 
@@ -85,7 +100,6 @@ issues:
       linters:
         - gosec
         - dupl
+  exclude-files:
+    - "mock_.+\\.go"
   exclude-use-default: false
-
-service:
-  golangci-lint-version: 1.55.x

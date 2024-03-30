@@ -1,5 +1,7 @@
 [![Actions Status](https://github.com/vmyroslav/<project>/actions/workflows/deployment.yaml/badge.svg)](https://github.com/vmyroslav/<project>/actions)
 
+# WIP: Package is under development
+
 # Consumer Package
 
 This package provides a set of tools for consuming messages from an SQS queue. It includes a consumer, message, and middleware components.

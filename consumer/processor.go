@@ -2,6 +2,7 @@ package consumer
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 
 	sqstypes "github.com/aws/aws-sdk-go-v2/service/sqs/types"
@@ -41,16 +42,22 @@ func (p *processorSQS[T]) Process(ctx context.Context, msgs <-chan sqstypes.Mess
 		handlerFunc = newMessageHandlerFunc(handler)
 
 		pCtx, cancel = context.WithCancel(ctx)
+
+		poolSize = int(p.cfg.HandlerWorkerPoolSize)
 	)
 
 	defer cancel()
+
+	if p.cfg.HandlerWorkerPoolSize < 1 {
+		return &ErrWrongConfig{Err: fmt.Errorf("invalid worker pool size: %d", p.cfg.HandlerWorkerPoolSize)}
+	}
 
 	// apply middlewares
 	for i := len(p.middlewares) - 1; i >= 0; i-- {
 		handlerFunc = p.middlewares[i](handlerFunc)
 	}
 
-	for i := int32(0); i < p.cfg.HandlerWorkerPoolSize; i++ {
+	for i := 0; i < poolSize; i++ {
 		go func() {
 			for {
 				select {
@@ -58,7 +65,7 @@ func (p *processorSQS[T]) Process(ctx context.Context, msgs <-chan sqstypes.Mess
 					return
 				case msg, ok := <-msgs:
 					if !ok {
-						return
+						p.logger.DebugContext(ctx, "message channel closed")
 					}
 
 					message, err := p.messageAdapter.Transform(ctx, msg)

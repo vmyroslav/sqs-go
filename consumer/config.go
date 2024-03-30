@@ -2,12 +2,20 @@ package consumer
 
 import "fmt"
 
+type ErrWrongConfig struct {
+	Err error
+}
+
+func (e *ErrWrongConfig) Error() string {
+	return fmt.Sprintf("wrong config: %s", e.Err)
+}
+
 type Config struct {
 	QueueURL string
 
 	HandlerWorkerPoolSize int32
 
-	// Poller configuration
+	// poller configuration
 	PollerWorkerPoolSize int32
 	MaxNumberOfMessages  int32
 	WaitTimeSeconds      int32

@@ -8,14 +8,14 @@ import (
 	sqstypes "github.com/aws/aws-sdk-go-v2/service/sqs/types"
 )
 
-// JsonSQSMessageAdapter is a message adapter for json messages
-type JsonSQSMessageAdapter[T Message] struct{}
+// JsonMessageAdapter is a message adapter for json messages
+type JsonMessageAdapter[T Message] struct{}
 
-func NewJsonSQSMessageAdapter[T Message]() *JsonSQSMessageAdapter[T] {
-	return &JsonSQSMessageAdapter[T]{}
+func NewJsonMessageAdapter[T Message]() *JsonMessageAdapter[T] {
+	return &JsonMessageAdapter[T]{}
 }
 
-func (a *JsonSQSMessageAdapter[T]) Transform(_ context.Context, msg sqstypes.Message) (T, error) {
+func (a *JsonMessageAdapter[T]) Transform(_ context.Context, msg sqstypes.Message) (T, error) {
 	var m T
 
 	if err := json.Unmarshal([]byte(*msg.Body), &m); err != nil {
@@ -25,8 +25,14 @@ func (a *JsonSQSMessageAdapter[T]) Transform(_ context.Context, msg sqstypes.Mes
 	return m, nil
 }
 
-type NullSQSMessageAdapter[T Message] struct{}
+type DummyAdapter[T Message] struct{}
 
-func NewNullSQSMessageAdapter[T Message]() *NullSQSMessageAdapter[T] {
-	return &NullSQSMessageAdapter[T]{}
+func NewDummyAdapter[T Message]() *DummyAdapter[T] {
+	return &DummyAdapter[T]{}
+}
+
+func (a *DummyAdapter[T]) Transform(_ context.Context, _ sqstypes.Message) (T, error) {
+	var m T
+
+	return m, nil
 }

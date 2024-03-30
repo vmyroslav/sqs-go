@@ -41,11 +41,13 @@ func newSqsPoller(
 
 func (p *sqsPoller) Poll(parentCtx context.Context, queueURL string, ch chan<- sqstypes.Message) error {
 	var (
-		poolSize = p.cfg.WorkerPoolSize
+		poolSize = int(p.cfg.WorkerPoolSize)
 		errCh    = make(chan error, poolSize)
 		wg       sync.WaitGroup
 
 		ctx, cancel = context.WithCancel(parentCtx)
+
+		retryCount int32
 	)
 
 	defer func() {
@@ -58,22 +60,21 @@ func (p *sqsPoller) Poll(parentCtx context.Context, queueURL string, ch chan<- s
 		return errors.New("worker pool size should be greater than 0")
 	}
 
-	for i := int32(0); i < poolSize; i++ {
+	for i := 0; i < poolSize; i++ {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
 
-			retryCount := 0
+			retryCount = 0
 
 			for {
 				select {
 				case <-ctx.Done():
-					p.logger.InfoContext(ctx, "poller stopped. Context is canceled.")
+					p.logger.DebugContext(ctx, "poller stopped. Context is canceled.")
 					return
 				default:
 				}
 
-				println("Polling messages from SQS")
 				msgResult, err := p.sqsClient.ReceiveMessage(ctx, &sqs.ReceiveMessageInput{
 					AttributeNames: []sqstypes.QueueAttributeName{
 						sqstypes.QueueAttributeNameAll,
@@ -88,7 +89,8 @@ func (p *sqsPoller) Poll(parentCtx context.Context, queueURL string, ch chan<- s
 				})
 				if err != nil {
 					if errors.Is(err, context.Canceled) {
-						p.logger.InfoContext(ctx, "poller stopped. Context is canceled.")
+						p.logger.DebugContext(ctx, "poller stopped. Context is canceled.")
+
 						return
 					}
 
@@ -104,7 +106,7 @@ func (p *sqsPoller) Poll(parentCtx context.Context, queueURL string, ch chan<- s
 					retryCount++
 					// if the error threshold is enabled
 					// and the number of retries is greater than the threshold, stop the poller
-					if p.cfg.ErrorNumberThreshold > 0 && int32(retryCount) >= p.cfg.ErrorNumberThreshold {
+					if p.cfg.ErrorNumberThreshold > 0 && retryCount >= p.cfg.ErrorNumberThreshold {
 						errCh <- errors.New("error threshold reached, stopping consumer")
 						cancel()
 
@@ -116,14 +118,12 @@ func (p *sqsPoller) Poll(parentCtx context.Context, queueURL string, ch chan<- s
 					continue
 				}
 
+				retryCount = 0
+
 				for _, msg := range msgResult.Messages {
-					select {
-					case <-ctx.Done():
-						p.logger.InfoContext(ctx, "poller stopped. Context is canceled.")
-						return
-					default:
-						ch <- msg
-					}
+					// if the context is canceled we will produce the received messages
+					// to the channel and return on the next iteration
+					ch <- msg
 				}
 			}
 		}()
@@ -140,7 +140,7 @@ func (p *sqsPoller) Poll(parentCtx context.Context, queueURL string, ch chan<- s
 }
 
 // backoff a simple exponential backoff function.
-func (p *sqsPoller) backoff(retryCount int) time.Duration {
+func (p *sqsPoller) backoff(retryCount int32) time.Duration {
 	baseDelay := 100 * time.Millisecond
 
 	delay := time.Duration(float64(baseDelay) * math.Pow(2, float64(retryCount)))

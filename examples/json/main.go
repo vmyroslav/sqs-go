@@ -41,7 +41,7 @@ func main() {
 
 			return nil
 		})
-		adapter     = consumer.NewJsonSQSMessageAdapter[MyMessage]()
+		adapter     = consumer.NewJsonMessageAdapter[MyMessage]()
 		middlewares []consumer.Middleware[MyMessage]
 	)
 
