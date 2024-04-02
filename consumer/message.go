@@ -19,18 +19,3 @@ type DefaultMessage struct {
 
 	queueUrl string
 }
-
-func (d DefaultMessage) Key() any {
-	// TODO implement me
-	panic("implement me")
-}
-
-func (d DefaultMessage) Payload() any {
-	// TODO implement me
-	panic("implement me")
-}
-
-func (d DefaultMessage) Headers() map[string][]byte {
-	// TODO implement me
-	panic("implement me")
-}

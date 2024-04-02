@@ -41,7 +41,7 @@ func main() {
 	awsCfg.BaseEndpoint = aws.String(awsBaseEndpoint)
 	sqsClient := sqs.NewFromConfig(*awsCfg)
 
-	consumer := consumer.NewDefaultConsumer[MyMessage](consumer.Config{
+	consumer := consumer.NewSQSConsumer[MyMessage](consumer.Config{
 		QueueURL:              queueURL,
 		HandlerWorkerPoolSize: 10,
 		PollerWorkerPoolSize:  2,

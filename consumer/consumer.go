@@ -52,7 +52,7 @@ type Processor[T Message] interface {
 	Process(ctx context.Context, ch <-chan sqstypes.Message, handler Handler[T]) error
 }
 
-type ConsumerSQS[T Message] struct {
+type SQSConsumer[T Message] struct {
 	cfg            Config
 	poller         poller
 	sqsClient      *sqs.Client
@@ -67,47 +67,18 @@ type ConsumerSQS[T Message] struct {
 	logger *slog.Logger
 }
 
-func NewConsumerSQS[T Message](
-	cfg Config,
-	poller poller,
-	sqsClient *sqs.Client,
-	messageAdapter MessageAdapter[T],
-	processor Processor[T],
-	middlewares []Middleware[T],
-	logger *slog.Logger,
-) *ConsumerSQS[T] {
-	c := &ConsumerSQS[T]{
-		cfg:            cfg,
-		poller:         poller,
-		sqsClient:      sqsClient,
-		messageAdapter: messageAdapter,
-		confirmer:      newSyncAcknowledger(sqsClient, cfg.QueueURL),
-		processor:      processor,
-		middlewares:    middlewares,
-		stopSignalCh:   make(chan struct{}, 1),
-		stoppedCh:      make(chan struct{}, 1),
-		logger:         logger,
-	}
-
-	if c.logger == nil {
-		c.logger = slog.New(slog.NewJSONHandler(io.Discard, nil))
-	}
-
-	return c
-}
-
-func NewDefaultConsumer[T Message](
+func NewSQSConsumer[T Message](
 	cfg Config,
 	sqsClient *sqs.Client,
 	messageAdapter MessageAdapter[T],
 	middlewares []Middleware[T],
 	logger *slog.Logger,
-) *ConsumerSQS[T] {
+) *SQSConsumer[T] {
 	if logger == nil {
 		logger = slog.New(slog.NewTextHandler(io.Discard, nil))
 	}
 
-	c := &ConsumerSQS[T]{
+	c := &SQSConsumer[T]{
 		cfg: cfg,
 		poller: newSqsPoller(pollerConfig{
 			MaxNumberOfMessages:  cfg.MaxNumberOfMessages,
@@ -132,7 +103,7 @@ func NewDefaultConsumer[T Message](
 	return c
 }
 
-func (c *ConsumerSQS[T]) Consume(ctx context.Context, queueURL string, messageHandler Handler[T]) error {
+func (c *SQSConsumer[T]) Consume(ctx context.Context, queueURL string, messageHandler Handler[T]) error {
 	var (
 		// requires some tuning to find the optimal value depending on the message processing time and visibility timeout
 		bufferSize = c.cfg.HandlerWorkerPoolSize * 3

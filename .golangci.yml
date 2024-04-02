@@ -100,6 +100,7 @@ issues:
       linters:
         - gosec
         - dupl
+        - cyclop
   exclude-files:
     - "mock_.+\\.go"
   exclude-use-default: false

@@ -17,6 +17,7 @@ import (
 	sqstypes "github.com/aws/aws-sdk-go-v2/service/sqs/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 )
 
 var logger = slog.New(slog.NewTextHandler(io.Discard, nil))
@@ -96,8 +97,11 @@ func TestSqsPoller_Poll(t *testing.T) { // nolint: gocognit
 			assert.NoError(t, err)
 		}()
 
-		var receivedMessages []sqstypes.Message
-		timeout := time.After(1 * time.Second)
+		var (
+			receivedMessages []sqstypes.Message
+			timeout          = time.After(1 * time.Second)
+		)
+
 	loop:
 		for {
 			select {
@@ -160,7 +164,7 @@ func TestSqsPoller_Poll(t *testing.T) { // nolint: gocognit
 
 		select {
 		case err := <-errCh:
-			assert.NoError(t, err)
+			require.NoError(t, err)
 		case <-time.After(2 * time.Second):
 			t.Error("Test did not complete within the expected time")
 		}

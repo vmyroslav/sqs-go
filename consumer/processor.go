@@ -72,6 +72,7 @@ func (p *processorSQS[T]) Process(ctx context.Context, msgs <-chan sqstypes.Mess
 					if err != nil {
 						p.logger.ErrorContext(ctx, "error transforming message", err)
 						processErrCh <- err
+
 						continue
 					}
 

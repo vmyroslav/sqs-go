@@ -85,7 +85,8 @@ func (_m *mockSqsConnector) ReceiveMessage(ctx context.Context, params *sqs.Rece
 func newMockSqsConnector(t interface {
 	mock.TestingT
 	Cleanup(func())
-}) *mockSqsConnector {
+},
+) *mockSqsConnector {
 	mock := &mockSqsConnector{}
 	mock.Mock.Test(t)
 

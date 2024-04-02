@@ -54,7 +54,7 @@ func main() {
 	awsCfg.BaseEndpoint = aws.String(awsBaseEndpoint)
 	sqsClient := sqs.NewFromConfig(*awsCfg)
 
-	consumer := consumer.NewDefaultConsumer[MyMessage](sqsConfig, sqsClient, adapter, middlewares, logger)
+	consumer := consumer.NewSQSConsumer[MyMessage](sqsConfig, sqsClient, adapter, middlewares, logger)
 
 	if err := produceMessages(sqsClient, 10); err != nil {
 		panic(fmt.Errorf("failed to produce message: %w", err))
