@@ -23,7 +23,7 @@ func TestJsonMessageAdapterTransform(t *testing.T) {
 	}
 
 	var (
-		adapter = NewJsonMessageAdapter[myMessage]()
+		adapter = NewJSONMessageAdapter[myMessage]()
 		ctx     = context.Background()
 	)
 
@@ -101,9 +101,11 @@ func TestDummyAdapterTransform(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			result, err := adapter.Transform(ctx, tt.msg)
 
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Equal(t, tt.expectedMsg, result)
 		})
 	}

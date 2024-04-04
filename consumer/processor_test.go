@@ -139,6 +139,7 @@ func Test_Process_WhenMessageIsReceived_CallsMessageHandlerWithCorrectMessage(t 
 
 	handler := HandlerFunc[sqstypes.Message](func(ctx context.Context, msg sqstypes.Message) error {
 		handlerCalled <- true
+
 		assert.Equal(t, msgBody, *msg.Body)
 
 		return nil

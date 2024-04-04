@@ -40,12 +40,12 @@ func main() {
 
 			return nil
 		})
-		adapter     = consumer.NewJsonMessageAdapter[MyMessage]()
+		adapter     = consumer.NewJSONMessageAdapter[MyMessage]()
 		middlewares []consumer.Middleware[MyMessage]
 	)
 
-	middlewares = append(middlewares, consumer.NewTimeTrackingMiddleware[MyMessage]())
-	middlewares = append(middlewares, consumer.MiddlewareAdapter[MyMessage](NewLoggingMiddleware()))
+	middlewares = append(middlewares, newTimeTrackingMiddleware[MyMessage]())
+	middlewares = append(middlewares, consumer.MiddlewareAdapter[MyMessage](newLoggingMiddleware()))
 
 	defer cancel()
 
@@ -99,11 +99,26 @@ type MyMessage struct {
 	Body string `json:"body"`
 }
 
-func NewLoggingMiddleware() consumer.Middleware[any] {
+func newLoggingMiddleware() consumer.Middleware[any] {
 	return func(next consumer.HandlerFunc[any]) consumer.HandlerFunc[any] {
 		return func(ctx context.Context, msg any) error {
 			fmt.Printf("Generic message received: %v\n", msg)
 			return next.Handle(ctx, msg)
+		}
+	}
+}
+
+func newTimeTrackingMiddleware[T any]() consumer.Middleware[T] {
+	return func(next consumer.HandlerFunc[T]) consumer.HandlerFunc[T] {
+		return func(ctx context.Context, msg T) error {
+			start := time.Now()
+
+			err := next.Handle(ctx, msg)
+
+			elapsed := time.Since(start)
+			fmt.Printf("Message processed in %s\n", elapsed)
+
+			return err
 		}
 	}
 }

@@ -1,4 +1,7 @@
-[![Actions Status](https://github.com/vmyroslav/<project>/actions/workflows/deployment.yaml/badge.svg)](https://github.com/vmyroslav/<project>/actions)
+[![Action Status](https://github.com/vmyroslav/sqs-go/actions/workflows/ci.yml/badge.svg)](https://github.com/vmyroslav/sqs-go/actions/workflows/ci.yml)
+[![codecov](https://codecov.io/gh/vmyroslav/sqs-go/branch/main/graph/badge.svg?token=8F5APGAZT6)](https://codecov.io/gh/vmyroslav/sqs-go)
+[![Go Report Card](https://goreportcard.com/badge/github.com/vmyroslav/home-lib)](https://goreportcard.com/report/github.com/vmyroslav/home-lib)
+[![Godoc](https://pkg.go.dev/badge/github.com/vmyroslav/home-lib?utm_source=godoc)](https://pkg.go.dev/github.com/vmyroslav/home-lib)
 
 # WIP: Package is under development
 

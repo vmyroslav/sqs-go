@@ -62,7 +62,7 @@ func (p *sqsPoller) Poll(parentCtx context.Context, queueURL string, ch chan<- s
 
 	for i := 0; i < poolSize; i++ {
 		wg.Add(1)
-		go func() {
+		go func() { // nolint: wsl
 			defer wg.Done()
 
 			retryCount = 0

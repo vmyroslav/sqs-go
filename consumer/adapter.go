@@ -8,14 +8,14 @@ import (
 	sqstypes "github.com/aws/aws-sdk-go-v2/service/sqs/types"
 )
 
-// JsonMessageAdapter is a message adapter for json messages
-type JsonMessageAdapter[T any] struct{}
+// JSONMessageAdapter is a message adapter for json messages
+type JSONMessageAdapter[T any] struct{}
 
-func NewJsonMessageAdapter[T any]() *JsonMessageAdapter[T] {
-	return &JsonMessageAdapter[T]{}
+func NewJSONMessageAdapter[T any]() *JSONMessageAdapter[T] {
+	return &JSONMessageAdapter[T]{}
 }
 
-func (a *JsonMessageAdapter[T]) Transform(_ context.Context, msg sqstypes.Message) (T, error) {
+func (a *JSONMessageAdapter[T]) Transform(_ context.Context, msg sqstypes.Message) (T, error) {
 	var m T
 
 	if err := json.Unmarshal([]byte(*msg.Body), &m); err != nil {

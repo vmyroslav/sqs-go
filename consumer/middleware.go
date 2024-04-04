@@ -4,23 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
-	"time"
 )
-
-func NewTimeTrackingMiddleware[T any]() Middleware[T] {
-	return func(next HandlerFunc[T]) HandlerFunc[T] {
-		return func(ctx context.Context, msg T) error {
-			start := time.Now()
-
-			err := next.Handle(ctx, msg)
-
-			elapsed := time.Since(start)
-			fmt.Printf("Message processed in %s\n", elapsed)
-
-			return err
-		}
-	}
-}
 
 func NewIgnoreErrorsMiddleware[T any](l *slog.Logger) Middleware[T] {
 	return func(next HandlerFunc[T]) HandlerFunc[T] {
