@@ -27,7 +27,6 @@ var (
 		MaxNumberOfMessages:   10,
 		WaitTimeSeconds:       2,
 		VisibilityTimeout:     10,
-		MaxNumberOfRetries:    0,
 		ErrorNumberThreshold:  0,
 	}
 )
@@ -54,19 +53,19 @@ func main() {
 	awsCfg.BaseEndpoint = aws.String(awsBaseEndpoint)
 	sqsClient := sqs.NewFromConfig(*awsCfg)
 
-	consumer := consumer.NewSQSConsumer[MyMessage](sqsConfig, sqsClient, adapter, middlewares, logger)
+	sqsConsumer := consumer.NewSQSConsumer[MyMessage](sqsConfig, sqsClient, adapter, middlewares, logger)
 
 	if err := produceMessages(sqsClient, 10); err != nil {
 		panic(fmt.Errorf("failed to produce message: %w", err))
 	}
 
 	go func() {
-		if err := consumer.Consume(ctx, queueURL, handler); err != nil {
+		if err := sqsConsumer.Consume(ctx, queueURL, handler); err != nil {
 			fmt.Println(err)
 		}
 	}()
 
-	// notify context to stop the consumer by the signal
+	// notify context to stop the sqsConsumer by the signal
 	signal.NotifyContext(ctx, os.Interrupt)
 	<-ctx.Done()
 }

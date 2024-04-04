@@ -20,8 +20,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var logger = slog.New(slog.NewTextHandler(io.Discard, nil))
-
 func TestSqsPoller_Poll(t *testing.T) { // nolint: gocognit
 	var (
 		cfg = pollerConfig{
@@ -40,6 +38,7 @@ func TestSqsPoller_Poll(t *testing.T) { // nolint: gocognit
 			sqsClient   = newMockSqsConnector(t)
 			ctx, cancel = context.WithCancel(context.Background())
 			messagesCh  = make(chan sqstypes.Message, 100)
+			logger      = slog.New(slog.NewTextHandler(io.Discard, nil))
 			p           poller
 		)
 
@@ -90,7 +89,7 @@ func TestSqsPoller_Poll(t *testing.T) { // nolint: gocognit
 			mock.Anything,
 		).Return(mockMessagesOutputFunc(), nil)
 
-		p = newSqsPoller(cfg, sqsClient, nil)
+		p = newSqsPoller(cfg, sqsClient, logger)
 
 		go func() {
 			err := p.Poll(ctx, queueURL, messagesCh)
@@ -132,6 +131,7 @@ func TestSqsPoller_Poll(t *testing.T) { // nolint: gocognit
 		var (
 			sqsClient   = newMockSqsConnector(t)
 			ctx, cancel = context.WithTimeout(context.Background(), 100*time.Millisecond)
+			logger      = slog.New(slog.NewTextHandler(io.Discard, nil))
 		)
 
 		defer cancel()
@@ -153,7 +153,7 @@ func TestSqsPoller_Poll(t *testing.T) { // nolint: gocognit
 		}, nil)
 
 		var (
-			p     = newSqsPoller(cfg, sqsClient, nil)
+			p     = newSqsPoller(cfg, sqsClient, logger)
 			ch    = make(chan sqstypes.Message, 100)
 			errCh = make(chan error, 1)
 		)
@@ -189,10 +189,11 @@ func TestSqsPoller_Poll(t *testing.T) { // nolint: gocognit
 			messagesCh  = make(chan sqstypes.Message, 100)
 			errCh       = make(chan error, 1)
 			sqsClient   = newMockSqsConnector(t)
+			logger      = slog.New(slog.NewTextHandler(io.Discard, nil))
 		)
 
 		cfg.ErrorNumberThreshold = 1
-		p := newSqsPoller(cfg, sqsClient, nil)
+		p := newSqsPoller(cfg, sqsClient, logger)
 
 		defer cancel()
 
@@ -218,6 +219,7 @@ func TestSqsPoller_Poll(t *testing.T) { // nolint: gocognit
 			errCh       = make(chan error, 1)
 			errorCount  int32
 			sqsClient   = newMockSqsConnector(t)
+			logger      = slog.New(slog.NewTextHandler(io.Discard, nil))
 		)
 
 		cfg.ErrorNumberThreshold = 5

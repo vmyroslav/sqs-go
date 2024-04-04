@@ -41,14 +41,13 @@ func main() {
 	awsCfg.BaseEndpoint = aws.String(awsBaseEndpoint)
 	sqsClient := sqs.NewFromConfig(*awsCfg)
 
-	consumer := consumer.NewSQSConsumer[MyMessage](consumer.Config{
+	sqsConsumer := consumer.NewSQSConsumer[MyMessage](consumer.Config{
 		QueueURL:              queueURL,
 		HandlerWorkerPoolSize: 10,
 		PollerWorkerPoolSize:  2,
 		MaxNumberOfMessages:   10,
 		WaitTimeSeconds:       2,
 		VisibilityTimeout:     10,
-		MaxNumberOfRetries:    0,
 		ErrorNumberThreshold:  0,
 	}, sqsClient, adapter, nil, logger)
 
@@ -57,12 +56,12 @@ func main() {
 	}
 
 	go func() {
-		if err := consumer.Consume(ctx, queueURL, handler); err != nil {
+		if err := sqsConsumer.Consume(ctx, queueURL, handler); err != nil {
 			fmt.Println(err)
 		}
 	}()
 
-	// notify context to stop the consumer by the signal
+	// notify context to stop the sqsConsumer by the signal
 	signal.NotifyContext(ctx, os.Interrupt)
 	<-ctx.Done()
 }

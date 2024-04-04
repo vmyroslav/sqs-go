@@ -2,8 +2,11 @@ package consumer
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"log/slog"
+	"sync"
+	"time"
 
 	"github.com/aws/aws-sdk-go-v2/service/sqs"
 	sqstypes "github.com/aws/aws-sdk-go-v2/service/sqs/types"
@@ -63,8 +66,11 @@ type SQSConsumer[T Message] struct {
 
 	stopSignalCh chan struct{}
 	stoppedCh    chan struct{}
+	isRunning    bool
 
 	logger *slog.Logger
+
+	mu sync.RWMutex
 }
 
 func NewSQSConsumer[T Message](
@@ -88,10 +94,9 @@ func NewSQSConsumer[T Message](
 			ErrorNumberThreshold: cfg.ErrorNumberThreshold,
 		}, sqsClient, logger),
 		processor: newProcessorSQS[T](
-			processorConfig{HandlerWorkerPoolSize: cfg.HandlerWorkerPoolSize},
+			processorConfig{WorkerPoolSize: cfg.HandlerWorkerPoolSize},
 			messageAdapter,
-			newSyncAcknowledger(sqsClient, cfg.QueueURL),
-			middlewares,
+			newSyncAcknowledger(cfg.QueueURL, sqsClient),
 			logger,
 		),
 		middlewares:  middlewares,
@@ -126,6 +131,14 @@ func (c *SQSConsumer[T]) Consume(ctx context.Context, queueURL string, messageHa
 		cancel()
 	}()
 
+	if c.IsRunning() {
+		return fmt.Errorf("consumer is already running") // nolint:goerr113
+	}
+
+	c.mu.Lock()
+	c.isRunning = true
+	c.mu.Unlock()
+
 	// apply middlewares
 	for i := len(c.middlewares) - 1; i >= 0; i-- {
 		handlerFunc = c.middlewares[i](handlerFunc)
@@ -142,6 +155,34 @@ func (c *SQSConsumer[T]) Consume(ctx context.Context, queueURL string, messageHa
 	}
 
 	return nil
+}
+
+func (c *SQSConsumer[T]) Close() error {
+	if !c.IsRunning() {
+		return nil
+	}
+
+	c.logger.Debug("closing SQS consumer")
+
+	c.stopSignalCh <- struct{}{}
+
+	select {
+	case <-c.stoppedCh:
+		c.logger.Debug("SQS consumer stopped")
+
+		return nil
+	case <-time.After(time.Duration(c.cfg.GracefulShutdownTimeout) * time.Second):
+		c.logger.Warn("SQS consumer did not stop in time")
+
+		return fmt.Errorf("SQS consumer did not stop in time") // nolint:goerr113
+	}
+}
+
+func (c *SQSConsumer[T]) IsRunning() bool {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+
+	return c.isRunning
 }
 
 func newMessageHandlerFunc[T Message](handler Handler[T]) HandlerFunc[T] {

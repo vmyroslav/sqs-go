@@ -15,7 +15,7 @@ type syncAcknowledger struct {
 	queueURL  string
 }
 
-func newSyncAcknowledger(sqsClient sqsConnector, queueURL string) *syncAcknowledger {
+func newSyncAcknowledger(queueURL string, sqsClient sqsConnector) *syncAcknowledger {
 	return &syncAcknowledger{sqsClient: sqsClient, queueURL: queueURL}
 }
 

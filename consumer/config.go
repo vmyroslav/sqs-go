@@ -26,6 +26,8 @@ type Config struct {
 	VisibilityTimeout int32
 	// MaxNumberOfRetries is the maximum number of retries for a message polling. -1 means infinite retries
 	ErrorNumberThreshold int32
+
+	GracefulShutdownTimeout int32
 }
 
 func NewConfig(

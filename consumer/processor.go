@@ -4,18 +4,18 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"sync"
 
 	sqstypes "github.com/aws/aws-sdk-go-v2/service/sqs/types"
 )
 
 type processorConfig struct {
-	HandlerWorkerPoolSize int32
+	WorkerPoolSize int32
 }
 type processorSQS[T Message] struct {
 	cfg            processorConfig
 	messageAdapter MessageAdapter[T]
 	acknowledger   Confirmer
-	middlewares    []Middleware[T]
 	logger         *slog.Logger
 }
 
@@ -23,14 +23,12 @@ func newProcessorSQS[T Message](
 	cfg processorConfig,
 	messageAdapter MessageAdapter[T],
 	acknowledger Confirmer,
-	middlewares []Middleware[T],
 	logger *slog.Logger,
 ) *processorSQS[T] {
 	return &processorSQS[T]{
 		cfg:            cfg,
 		messageAdapter: messageAdapter,
 		acknowledger:   acknowledger,
-		middlewares:    middlewares,
 		logger:         logger,
 	}
 }
@@ -38,34 +36,34 @@ func newProcessorSQS[T Message](
 func (p *processorSQS[T]) Process(ctx context.Context, msgs <-chan sqstypes.Message, handler Handler[T]) error {
 	var (
 		processErrCh = make(chan error, 1)
-
-		handlerFunc = newMessageHandlerFunc(handler)
-
+		handlerFunc  = newMessageHandlerFunc(handler)
 		pCtx, cancel = context.WithCancel(ctx)
-
-		poolSize = int(p.cfg.HandlerWorkerPoolSize)
+		poolSize     = int(p.cfg.WorkerPoolSize)
+		wg           sync.WaitGroup
 	)
 
 	defer cancel()
 
-	if p.cfg.HandlerWorkerPoolSize < 1 {
-		return &ErrWrongConfig{Err: fmt.Errorf("invalid worker pool size: %d", p.cfg.HandlerWorkerPoolSize)}
-	}
-
-	// apply middlewares
-	for i := len(p.middlewares) - 1; i >= 0; i-- {
-		handlerFunc = p.middlewares[i](handlerFunc)
+	if p.cfg.WorkerPoolSize < 1 {
+		return &ErrWrongConfig{Err: fmt.Errorf("invalid worker pool size: %d", p.cfg.WorkerPoolSize)}
 	}
 
 	for i := 0; i < poolSize; i++ {
+		wg.Add(1)
+
 		go func() {
+			defer wg.Done()
+
 			for {
 				select {
 				case <-ctx.Done():
 					return
 				case msg, ok := <-msgs:
 					if !ok {
+						println("Message channel closed")
 						p.logger.DebugContext(ctx, "message channel closed")
+
+						return
 					}
 
 					message, err := p.messageAdapter.Transform(ctx, msg)
@@ -99,6 +97,8 @@ func (p *processorSQS[T]) Process(ctx context.Context, msgs <-chan sqstypes.Mess
 						p.logger.ErrorContext(ctx, "error acknowledging message", err)
 						processErrCh <- err
 					}
+
+					println("Message processed")
 				}
 			}
 		}()

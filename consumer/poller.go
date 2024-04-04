@@ -104,8 +104,7 @@ func (p *sqsPoller) Poll(parentCtx context.Context, queueURL string, ch chan<- s
 					)
 
 					retryCount++
-					// if the error threshold is enabled
-					// and the number of retries is greater than the threshold, stop the poller
+					// if the error threshold is enabled and the number of retries is greater than the threshold, stop the poller
 					if p.cfg.ErrorNumberThreshold > 0 && retryCount >= p.cfg.ErrorNumberThreshold {
 						errCh <- errors.New("error threshold reached, stopping consumer")
 
