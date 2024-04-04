@@ -14,7 +14,7 @@ type Config struct {
 	QueueURL string
 
 	// processor configuration
-	HandlerWorkerPoolSize int32
+	ProcessorWorkerPoolSize int32
 
 	// poller configuration
 	PollerWorkerPoolSize int32
@@ -28,6 +28,8 @@ type Config struct {
 	ErrorNumberThreshold int32
 
 	GracefulShutdownTimeout int32
+
+	ReturnErrors bool
 }
 
 func NewConfig(
@@ -40,13 +42,13 @@ func NewConfig(
 	errorNumberThreshold int32,
 ) (*Config, error) {
 	config := &Config{
-		QueueURL:              queueURL,
-		HandlerWorkerPoolSize: handlerWorkerPoolSize,
-		PollerWorkerPoolSize:  pollerWorkerPoolSize,
-		MaxNumberOfMessages:   maxNumberOfMessages,
-		WaitTimeSeconds:       waitTimeSeconds,
-		VisibilityTimeout:     visibilityTimeout,
-		ErrorNumberThreshold:  errorNumberThreshold,
+		QueueURL:                queueURL,
+		ProcessorWorkerPoolSize: handlerWorkerPoolSize,
+		PollerWorkerPoolSize:    pollerWorkerPoolSize,
+		MaxNumberOfMessages:     maxNumberOfMessages,
+		WaitTimeSeconds:         waitTimeSeconds,
+		VisibilityTimeout:       visibilityTimeout,
+		ErrorNumberThreshold:    errorNumberThreshold,
 	}
 
 	_, err := config.IsValid()
@@ -60,13 +62,13 @@ func NewConfig(
 // NewDefaultConfig creates a new Config with default values
 func NewDefaultConfig(queueURL string) *Config {
 	return &Config{
-		QueueURL:              queueURL,
-		HandlerWorkerPoolSize: 10,
-		PollerWorkerPoolSize:  2,
-		MaxNumberOfMessages:   10,
-		WaitTimeSeconds:       1,
-		VisibilityTimeout:     30,
-		ErrorNumberThreshold:  -1,
+		QueueURL:                queueURL,
+		ProcessorWorkerPoolSize: 10,
+		PollerWorkerPoolSize:    2,
+		MaxNumberOfMessages:     10,
+		WaitTimeSeconds:         1,
+		VisibilityTimeout:       30,
+		ErrorNumberThreshold:    -1,
 	}
 }
 
@@ -75,7 +77,7 @@ func (c *Config) IsValid() (bool, error) {
 		return false, &ErrWrongConfig{Err: fmt.Errorf("queueURL cannot be empty")}
 	}
 
-	if c.HandlerWorkerPoolSize <= 0 {
+	if c.ProcessorWorkerPoolSize <= 0 {
 		return false, &ErrWrongConfig{Err: fmt.Errorf("handlerWorkerPoolSize must be greater than 0")}
 	}
 

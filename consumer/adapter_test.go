@@ -73,55 +73,38 @@ func TestJsonMessageAdapterTransform(t *testing.T) {
 }
 
 func TestDummyAdapterTransform(t *testing.T) {
-	type myMessage struct {
-		Key    string `json:"key"`
-		Body   string `json:"body"`
-		Nested struct {
-			Number int `json:"number"`
-		} `json:"nested"`
-	}
+	t.Parallel()
 
-	var (
-		adapter = NewDummyAdapter[myMessage]()
-		ctx     = context.Background()
-	)
+	adapter := NewDummyAdapter[sqstypes.Message]()
 
 	tests := []struct {
 		name        string
 		msg         sqstypes.Message
-		expectedMsg myMessage
-		expectError bool
+		expectedMsg sqstypes.Message
 	}{
 		{
-			name: "should always return empty message",
+			name: "should return the same message",
 			msg: sqstypes.Message{
-				Body: aws.String(`{"key":"value","body":"body","nested":{"number":1}}`),
+				MessageId:     aws.String("1"),
+				ReceiptHandle: aws.String("handle"),
+				Body:          aws.String("body"),
 			},
-			expectedMsg: myMessage{},
-			expectError: false,
-		},
-		{
-			name: "should return empty message for sqstypes.Message",
-			msg: sqstypes.Message{
-				Body: aws.String(`{"MessageId":"123","ReceiptHandle":"abc","MD5OfBody":"def","Body":"ghi","Attributes":null,"MD5OfMessageAttributes":null,"MessageAttributes":null}`),
+			expectedMsg: sqstypes.Message{
+				MessageId:     aws.String("1"),
+				ReceiptHandle: aws.String("handle"),
+				Body:          aws.String("body"),
 			},
-			expectedMsg: myMessage{},
-			expectError: false,
 		},
 	}
 
+	ctx := context.Background()
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-
 			result, err := adapter.Transform(ctx, tt.msg)
 
-			if tt.expectError {
-				assert.Error(t, err)
-			} else {
-				require.NoError(t, err)
-				assert.Equal(t, tt.expectedMsg, result)
-			}
+			assert.NoError(t, err)
+			assert.Equal(t, tt.expectedMsg, result)
 		})
 	}
 }

@@ -42,13 +42,13 @@ func main() {
 	sqsClient := sqs.NewFromConfig(*awsCfg)
 
 	sqsConsumer := consumer.NewSQSConsumer[MyMessage](consumer.Config{
-		QueueURL:              queueURL,
-		HandlerWorkerPoolSize: 10,
-		PollerWorkerPoolSize:  2,
-		MaxNumberOfMessages:   10,
-		WaitTimeSeconds:       2,
-		VisibilityTimeout:     10,
-		ErrorNumberThreshold:  0,
+		QueueURL:                queueURL,
+		ProcessorWorkerPoolSize: 10,
+		PollerWorkerPoolSize:    2,
+		MaxNumberOfMessages:     10,
+		WaitTimeSeconds:         2,
+		VisibilityTimeout:       10,
+		ErrorNumberThreshold:    0,
 	}, sqsClient, adapter, nil, logger)
 
 	if err := produceMessages(sqsClient, 10); err != nil {

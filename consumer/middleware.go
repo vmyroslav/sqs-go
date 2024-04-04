@@ -3,10 +3,11 @@ package consumer
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"time"
 )
 
-func NewTimeTrackingMiddleware[T Message]() Middleware[T] {
+func NewTimeTrackingMiddleware[T any]() Middleware[T] {
 	return func(next HandlerFunc[T]) HandlerFunc[T] {
 		return func(ctx context.Context, msg T) error {
 			start := time.Now()
@@ -21,7 +22,21 @@ func NewTimeTrackingMiddleware[T Message]() Middleware[T] {
 	}
 }
 
-func MiddlewareAdapter[T Message](mw Middleware[Message]) Middleware[T] {
+func NewIgnoreErrorsMiddleware[T any](l *slog.Logger) Middleware[T] {
+	return func(next HandlerFunc[T]) HandlerFunc[T] {
+		return func(ctx context.Context, msg T) error {
+			err := next.Handle(ctx, msg)
+
+			if err != nil && l != nil {
+				l.ErrorContext(ctx, fmt.Sprintf("failed to process message: %v", err))
+			}
+
+			return nil
+		}
+	}
+}
+
+func MiddlewareAdapter[T any](mw Middleware[any]) Middleware[T] {
 	return func(next HandlerFunc[T]) HandlerFunc[T] {
 		return func(ctx context.Context, msg T) error {
 			// Create a new handler that operates on T
@@ -31,7 +46,7 @@ func MiddlewareAdapter[T Message](mw Middleware[Message]) Middleware[T] {
 			}
 
 			// Create a new handler that matches the HandlerFunc[Message] type
-			genericHandler := func(ctx context.Context, msg Message) error {
+			genericHandler := func(ctx context.Context, msg any) error {
 				// Convert msg from Message to T
 				specificMsg, ok := msg.(T)
 				if !ok {

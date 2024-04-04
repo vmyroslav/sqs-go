@@ -2,6 +2,7 @@ package consumer
 
 import (
 	"context"
+	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/sqs"
 	"log/slog"
 	"os"
@@ -48,7 +49,7 @@ func Test_Process_WhenMessagesChannelIsClosed(t *testing.T) {
 
 	sqsClient.On("DeleteMessage", mock.Anything, mock.Anything).
 		Run(func(args mock.Arguments) {
-			callCh <- struct{}{}
+			callCh <- struct{}{} // mock the processing of the message
 		}).Return(&sqs.DeleteMessageOutput{}, nil)
 
 	p := newProcessorSQS[sqstypes.Message](
@@ -63,80 +64,95 @@ func Test_Process_WhenMessagesChannelIsClosed(t *testing.T) {
 	}()
 
 	msgs <- sqstypes.Message{}
-	println(1)
 
-	<-callCh
-	println(2)
-
+	<-callCh // wait to process the message
 	close(msgs)
-	println(3)
+
+	assert.NoError(t, <-errCh)
+}
+
+func Test_Process_WhenContextIsCancelled_ExitsWithoutError(t *testing.T) {
+	t.Parallel()
+
+	var (
+		queueURL = "https://sqs.us-east-1.amazonaws.com/123456789012/MyQueue"
+		errCh    = make(chan error, 1)
+		pCfg     = processorConfig{
+			WorkerPoolSize: 2,
+		}
+		sqsClient = newMockSqsConnector(t)
+		logger    = slog.New(slog.NewJSONHandler(os.Stdout, nil))
+		handler   = HandlerFunc[sqstypes.Message](func(ctx context.Context, msg sqstypes.Message) error {
+			return nil
+		})
+	)
+
+	p := newProcessorSQS[sqstypes.Message](
+		pCfg,
+		NewDummyAdapter[sqstypes.Message](),
+		newSyncAcknowledger(queueURL, sqsClient),
+		logger,
+	)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Millisecond)
+	defer cancel()
+
+	go func() {
+		errCh <- p.Process(ctx, make(chan sqstypes.Message), handler)
+	}()
+
 	err := <-errCh
-	println(4)
 	assert.NoError(t, err)
 }
 
-//func Test_Process_WhenContextIsCancelled_ExitsWithoutError(t *testing.T) {
-//	t.Parallel()
-//
-//	var (
-//		queueURL = "https://sqs.us-east-1.amazonaws.com/123456789012/MyQueue"
-//		errCh    = make(chan error, 1)
-//	)
-//
-//	p := newProcessorSQS(processorConfig{
-//		processorWorkerPoolSize: 2,
-//		queueURL:                queueURL,
-//	}, &ProtoSQSMessageAdapter{}, newSyncAcknowledger(nil), ctxd.NoOpLogger{})
-//
-//	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Millisecond)
-//	defer cancel()
-//
-//	go func() {
-//		errCh <- p.Process(ctx, make(chan sqstypes.Message), nil)
-//	}()
-//
-//	err := <-errCh
-//	assert.NoError(t, err)
-//}
-//
-//func Test_Process_WhenMessageIsReceived_CallsMessageHandlerWithCorrectMessage(t *testing.T) {
-//	t.Parallel()
-//
-//	var (
-//		sqsClient = newMockSqsConnector(t)
-//		msgs      = make(chan sqstypes.Message, 1)
-//	)
-//
-//	sqsClient.On("DeleteMessage", mock.Anything, mock.Anything).Return(nil, nil)
-//
-//	p := newProcessorSQS(processorConfig{
-//		processorWorkerPoolSize: 1,
-//	}, &mockMessageAdapter{
-//		TransformFunc: func(ctx context.Context, msg sqstypes.Message) (Message, error) {
-//			return Message{Payload: "transformed message"}, nil
-//		},
-//	}, newSyncAcknowledger(sqsClient), ctxd.NoOpLogger{})
-//
-//	msgs <- sqstypes.Message{Body: aws.String("original message")}
-//	close(msgs)
-//
-//	handlerCalled := false
-//
-//	handler := MessageHandleFunc(func(ctx context.Context, msg Message) error {
-//		handlerCalled = true
-//		assert.Equal(t, "transformed message", msg.Payload)
-//
-//		return nil
-//	})
-//	err := p.Process(context.Background(), msgs, handler)
-//	assert.NoError(t, err)
-//	assert.True(t, handlerCalled)
-//}
+func Test_Process_WhenMessageIsReceived_CallsMessageHandlerWithCorrectMessage(t *testing.T) {
+	t.Parallel()
 
-type mockMessageAdapter struct {
-	TransformFunc func(ctx context.Context, msg sqstypes.Message) (Message, error)
-}
+	var (
+		queueURL = "https://sqs.us-east-1.amazonaws.com/123456789012/MyQueue"
+		msgs     = make(chan sqstypes.Message, 1)
+		pCfg     = processorConfig{
+			WorkerPoolSize: 2,
+		}
+		sqsClient = newMockSqsConnector(t)
+		logger    = slog.New(slog.NewJSONHandler(os.Stdout, nil))
+		msgBody   = "original message"
+	)
 
-func (m *mockMessageAdapter) Transform(ctx context.Context, msg sqstypes.Message) (Message, error) {
-	return m.TransformFunc(ctx, msg)
+	sqsClient.On(
+		"DeleteMessage",
+		mock.Anything,
+		mock.Anything,
+	).Return(nil, nil)
+
+	p := newProcessorSQS[sqstypes.Message](
+		pCfg,
+		NewDummyAdapter[sqstypes.Message](),
+		newSyncAcknowledger(queueURL, sqsClient),
+		logger,
+	)
+
+	msgs <- sqstypes.Message{Body: aws.String(msgBody)}
+	defer close(msgs)
+
+	handlerCalled := make(chan bool, 1)
+
+	handler := HandlerFunc[sqstypes.Message](func(ctx context.Context, msg sqstypes.Message) error {
+		handlerCalled <- true
+		assert.Equal(t, msgBody, *msg.Body)
+
+		return nil
+	})
+
+	go func() {
+		err := p.Process(context.Background(), msgs, handler)
+		assert.NoError(t, err)
+	}()
+
+	select {
+	case hc := <-handlerCalled:
+		assert.True(t, hc)
+	case <-time.After(1 * time.Second):
+		t.Error("Test did not complete within the expected time")
+	}
 }

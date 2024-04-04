@@ -21,13 +21,13 @@ var (
 	timeOut         = 5 * time.Second
 
 	sqsConfig = consumer.Config{
-		QueueURL:              queueURL,
-		HandlerWorkerPoolSize: 10,
-		PollerWorkerPoolSize:  2,
-		MaxNumberOfMessages:   10,
-		WaitTimeSeconds:       2,
-		VisibilityTimeout:     10,
-		ErrorNumberThreshold:  0,
+		QueueURL:                queueURL,
+		ProcessorWorkerPoolSize: 10,
+		PollerWorkerPoolSize:    2,
+		MaxNumberOfMessages:     10,
+		WaitTimeSeconds:         2,
+		VisibilityTimeout:       10,
+		ErrorNumberThreshold:    0,
 	}
 )
 
@@ -99,9 +99,9 @@ type MyMessage struct {
 	Body string `json:"body"`
 }
 
-func NewLoggingMiddleware() consumer.Middleware[consumer.Message] {
-	return func(next consumer.HandlerFunc[consumer.Message]) consumer.HandlerFunc[consumer.Message] {
-		return func(ctx context.Context, msg consumer.Message) error {
+func NewLoggingMiddleware() consumer.Middleware[any] {
+	return func(next consumer.HandlerFunc[any]) consumer.HandlerFunc[any] {
+		return func(ctx context.Context, msg any) error {
 			fmt.Printf("Generic message received: %v\n", msg)
 			return next.Handle(ctx, msg)
 		}

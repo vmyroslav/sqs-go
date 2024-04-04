@@ -12,21 +12,19 @@ import (
 	sqstypes "github.com/aws/aws-sdk-go-v2/service/sqs/types"
 )
 
-type Message interface{}
-
 // Handler is a generic interface for message handlers.
 // The type parameter T specifies the type of message the handler accepts.
-type Handler[T Message] interface {
+type Handler[T any] interface {
 	Handle(ctx context.Context, msg T) error
 }
 
-type HandlerFunc[T Message] func(ctx context.Context, msg T) error
+type HandlerFunc[T any] func(ctx context.Context, msg T) error
 
 func (f HandlerFunc[T]) Handle(ctx context.Context, msg T) error {
 	return f(ctx, msg)
 }
 
-type Middleware[T Message] func(next HandlerFunc[T]) HandlerFunc[T]
+type Middleware[T any] func(next HandlerFunc[T]) HandlerFunc[T]
 
 // poller is an interface for polling messages from SQS.
 // The messages are transformed to the internal format and sent to the channel.
@@ -36,11 +34,11 @@ type poller interface {
 	Poll(ctx context.Context, queueURL string, ch chan<- sqstypes.Message) error
 }
 
-type MessageAdapter[T Message] interface {
+type MessageAdapter[T any] interface {
 	Transform(ctx context.Context, msg sqstypes.Message) (T, error)
 }
 
-type MessageAdapterFunc[T Message] func(ctx context.Context, msg sqstypes.Message) (T, error)
+type MessageAdapterFunc[T any] func(ctx context.Context, msg sqstypes.Message) (T, error)
 
 func (f MessageAdapterFunc[T]) Transform(ctx context.Context, msg sqstypes.Message) (T, error) {
 	return f(ctx, msg)
@@ -51,11 +49,11 @@ type Confirmer interface {
 	Reject(ctx context.Context, msg sqstypes.Message) error
 }
 
-type Processor[T Message] interface {
+type Processor[T any] interface {
 	Process(ctx context.Context, ch <-chan sqstypes.Message, handler Handler[T]) error
 }
 
-type SQSConsumer[T Message] struct {
+type SQSConsumer[T any] struct {
 	cfg            Config
 	poller         poller
 	sqsClient      *sqs.Client
@@ -68,12 +66,14 @@ type SQSConsumer[T Message] struct {
 	stoppedCh    chan struct{}
 	isRunning    bool
 
+	errors chan error
+
 	logger *slog.Logger
 
 	mu sync.RWMutex
 }
 
-func NewSQSConsumer[T Message](
+func NewSQSConsumer[T any](
 	cfg Config,
 	sqsClient *sqs.Client,
 	messageAdapter MessageAdapter[T],
@@ -94,7 +94,7 @@ func NewSQSConsumer[T Message](
 			ErrorNumberThreshold: cfg.ErrorNumberThreshold,
 		}, sqsClient, logger),
 		processor: newProcessorSQS[T](
-			processorConfig{WorkerPoolSize: cfg.HandlerWorkerPoolSize},
+			processorConfig{WorkerPoolSize: cfg.ProcessorWorkerPoolSize},
 			messageAdapter,
 			newSyncAcknowledger(cfg.QueueURL, sqsClient),
 			logger,
@@ -111,7 +111,7 @@ func NewSQSConsumer[T Message](
 func (c *SQSConsumer[T]) Consume(ctx context.Context, queueURL string, messageHandler Handler[T]) error {
 	var (
 		// requires some tuning to find the optimal value depending on the message processing time and visibility timeout
-		bufferSize = c.cfg.HandlerWorkerPoolSize * 3
+		bufferSize = c.cfg.ProcessorWorkerPoolSize * 3
 
 		msgs = make(chan sqstypes.Message, bufferSize)
 
@@ -147,7 +147,6 @@ func (c *SQSConsumer[T]) Consume(ctx context.Context, queueURL string, messageHa
 	go func() { pollerErrCh <- c.poller.Poll(processCtx, queueURL, msgs) }()
 	go func() { processErrCh <- c.processor.Process(processCtx, msgs, handlerFunc) }()
 
-	println("Consumer started")
 	select {
 	case <-ctx.Done():
 		c.logger.InfoContext(ctx, "context is canceled. Shutting down consumer.")
@@ -185,7 +184,15 @@ func (c *SQSConsumer[T]) IsRunning() bool {
 	return c.isRunning
 }
 
-func newMessageHandlerFunc[T Message](handler Handler[T]) HandlerFunc[T] {
+func (c *SQSConsumer[T]) sendError(err error) {
+	if c.cfg.ReturnErrors {
+		c.errors <- err
+	} else {
+		c.logger.Error("error occurred", "error", err)
+	}
+}
+
+func newMessageHandlerFunc[T any](handler Handler[T]) HandlerFunc[T] {
 	return func(ctx context.Context, message T) error {
 		return handler.Handle(ctx, message)
 	}

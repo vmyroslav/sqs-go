@@ -12,14 +12,14 @@ import (
 type processorConfig struct {
 	WorkerPoolSize int32
 }
-type processorSQS[T Message] struct {
+type processorSQS[T any] struct {
 	cfg            processorConfig
 	messageAdapter MessageAdapter[T]
 	acknowledger   Confirmer
 	logger         *slog.Logger
 }
 
-func newProcessorSQS[T Message](
+func newProcessorSQS[T any](
 	cfg processorConfig,
 	messageAdapter MessageAdapter[T],
 	acknowledger Confirmer,
@@ -60,7 +60,6 @@ func (p *processorSQS[T]) Process(ctx context.Context, msgs <-chan sqstypes.Mess
 					return
 				case msg, ok := <-msgs:
 					if !ok {
-						println("Message channel closed")
 						p.logger.DebugContext(ctx, "message channel closed")
 
 						return
@@ -97,12 +96,12 @@ func (p *processorSQS[T]) Process(ctx context.Context, msgs <-chan sqstypes.Mess
 						p.logger.ErrorContext(ctx, "error acknowledging message", err)
 						processErrCh <- err
 					}
-
-					println("Message processed")
 				}
 			}
 		}()
 	}
 
-	return <-processErrCh
+	wg.Wait()
+
+	return nil
 }
