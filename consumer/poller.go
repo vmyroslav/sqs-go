@@ -46,8 +46,6 @@ func (p *sqsPoller) Poll(parentCtx context.Context, queueURL string, ch chan<- s
 		wg       sync.WaitGroup
 
 		ctx, cancel = context.WithCancel(parentCtx)
-
-		retryCount int32
 	)
 
 	defer func() {
@@ -65,7 +63,7 @@ func (p *sqsPoller) Poll(parentCtx context.Context, queueURL string, ch chan<- s
 		go func() { // nolint: wsl
 			defer wg.Done()
 
-			retryCount = 0
+			var retryCount int32 = 0
 
 			for {
 				select {

@@ -31,7 +31,7 @@ func main() {
 			return nil
 		})
 		adapter = consumer.MessageAdapterFunc[MyMessage](func(ctx context.Context, msg sqstypes.Message) (MyMessage, error) {
-			return MyMessage{Key2: *msg.MessageId, Body: *msg.Body}, nil
+			return MyMessage{Key: *msg.MessageId, Body: *msg.Body}, nil
 		})
 	)
 
@@ -81,13 +81,8 @@ func produceMessages(sqsClient *sqs.Client, amount int) error {
 }
 
 type MyMessage struct {
-	Key2 string
+	Key  string
 	Body string
-}
-
-func (m MyMessage) Key() any {
-	// TODO implement me
-	panic("implement me")
 }
 
 func (m MyMessage) Payload() any {
