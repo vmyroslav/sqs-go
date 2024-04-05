@@ -15,7 +15,7 @@ tasks:
       - golangci-lint run -c .golangci.yml
   test:
     cmds:
-      - go test -gcflags=-l -covermode=atomic -coverprofile=profile.cov -race ./...
+      - go test -gcflags=-l -covermode=atomic -coverprofile=coverage.out -race ./...
   update-deps:
     desc: Update dependencies
     cmds:
