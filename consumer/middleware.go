@@ -6,6 +6,8 @@ import (
 	"log/slog"
 )
 
+// NewIgnoreErrorsMiddleware creates a new middleware that ignores errors that occur during message processing.
+// If the logger is provided, it will log the error.
 func NewIgnoreErrorsMiddleware[T any](l *slog.Logger) Middleware[T] {
 	return func(next HandlerFunc[T]) HandlerFunc[T] {
 		return func(ctx context.Context, msg T) error {
@@ -20,6 +22,8 @@ func NewIgnoreErrorsMiddleware[T any](l *slog.Logger) Middleware[T] {
 	}
 }
 
+// MiddlewareAdapter adapts a middleware of any type to a middleware of a specific type T.
+// It creates a new handler that operates on T and a new handler that matches the HandlerFunc[Message] type.
 func MiddlewareAdapter[T any](mw Middleware[any]) Middleware[T] {
 	return func(next HandlerFunc[T]) HandlerFunc[T] {
 		return func(ctx context.Context, msg T) error {
