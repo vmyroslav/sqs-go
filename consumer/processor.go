@@ -37,12 +37,9 @@ func (p *processorSQS[T]) Process(ctx context.Context, msgs <-chan sqstypes.Mess
 	var (
 		processErrCh = make(chan error, 1)
 		handlerFunc  = newMessageHandlerFunc(handler)
-		pCtx, cancel = context.WithCancel(ctx)
 		poolSize     = int(p.cfg.WorkerPoolSize)
 		wg           sync.WaitGroup
 	)
-
-	defer cancel()
 
 	if p.cfg.WorkerPoolSize < 1 {
 		return &ErrWrongConfig{Err: fmt.Errorf("invalid worker pool size: %d", p.cfg.WorkerPoolSize)}
@@ -73,8 +70,8 @@ func (p *processorSQS[T]) Process(ctx context.Context, msgs <-chan sqstypes.Mess
 						continue
 					}
 
-					if err = handlerFunc.Handle(pCtx, message); err != nil {
-						processErrCh <- err
+					if err = handlerFunc.Handle(ctx, message); err != nil {
+						//processErrCh <- err
 						// Message stays in the queue and will be processed again.
 						// It will be visible again after visibility timeout.
 						// Can return into the queue if needed by setting the visibility timeout to 0.

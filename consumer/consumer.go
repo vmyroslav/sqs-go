@@ -75,7 +75,7 @@ type SQSConsumer[T any] struct {
 
 func NewSQSConsumer[T any](
 	cfg Config,
-	sqsClient *sqs.Client,
+	sqsClient sqsConnector,
 	messageAdapter MessageAdapter[T],
 	middlewares []Middleware[T],
 	logger *slog.Logger,
@@ -116,19 +116,26 @@ func (c *SQSConsumer[T]) Consume(ctx context.Context, queueURL string, messageHa
 		msgs = make(chan sqstypes.Message, bufferSize)
 
 		stopCh       = make(chan struct{})
+		pollerErrCh  = make(chan error, 1)
 		processErrCh = make(chan error, 1)
-		pollerErrCh  chan error
 
 		handlerFunc = newMessageHandlerFunc(messageHandler)
 
-		processCtx, cancel = context.WithCancel(ctx)
+		processCtx, cancelProcess = context.WithCancel(ctx)
+		pollerCtx, cancelPoller   = context.WithCancel(ctx)
 	)
 
 	defer func() {
-		close(msgs)
+		//close(msgs)
 		close(stopCh)
-		close(processErrCh)
-		cancel()
+		//close(pollerErrCh)
+		//close(processErrCh)
+		cancelProcess()
+		cancelPoller()
+
+		c.mu.Lock()
+		c.isRunning = false
+		c.mu.Unlock()
 	}()
 
 	if c.IsRunning() {
@@ -144,13 +151,17 @@ func (c *SQSConsumer[T]) Consume(ctx context.Context, queueURL string, messageHa
 		handlerFunc = c.middlewares[i](handlerFunc)
 	}
 
-	go func() { pollerErrCh <- c.poller.Poll(processCtx, queueURL, msgs) }()
+	go func() { pollerErrCh <- c.poller.Poll(pollerCtx, queueURL, msgs) }()
 	go func() { processErrCh <- c.processor.Process(processCtx, msgs, handlerFunc) }()
 
 	select {
 	case <-ctx.Done():
 		c.logger.InfoContext(ctx, "context is canceled. Shutting down consumer.")
-		cancel()
+		//cancel()
+
+		return ctx.Err()
+	case <-stopCh:
+		cancelPoller()
 	}
 
 	return nil

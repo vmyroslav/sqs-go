@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"time"
 )
 
 // NewIgnoreErrorsMiddleware creates a new middleware that ignores errors that occur during message processing.
@@ -18,6 +19,41 @@ func NewIgnoreErrorsMiddleware[T any](l *slog.Logger) Middleware[T] {
 			}
 
 			return nil
+		}
+	}
+}
+
+func NewPanicRecoverMiddleware[T any]() Middleware[T] {
+	return func(next HandlerFunc[T]) HandlerFunc[T] {
+		return func(ctx context.Context, msg T) (err error) {
+			defer func() {
+				if r := recover(); r != nil {
+					err = fmt.Errorf("recovered from panic: %v", r)
+				}
+			}()
+
+			return next.Handle(ctx, msg)
+		}
+	}
+}
+
+func NewTimeLimitMiddleware[T any](timeout time.Duration) Middleware[T] {
+	return func(next HandlerFunc[T]) HandlerFunc[T] {
+		return func(ctx context.Context, msg T) error {
+			ctx, cancel := context.WithTimeout(ctx, timeout)
+			defer cancel()
+
+			done := make(chan error)
+			go func() {
+				done <- next(ctx, msg)
+			}()
+
+			select {
+			case err := <-done:
+				return err
+			case <-ctx.Done():
+				return ctx.Err()
+			}
 		}
 	}
 }

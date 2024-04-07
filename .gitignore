@@ -11,3 +11,5 @@
 /credentials.json
 /vendor/
 /examples/tmp/
+/coverage.out
+/packages.out
