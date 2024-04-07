@@ -71,7 +71,7 @@ func (p *processorSQS[T]) Process(ctx context.Context, msgs <-chan sqstypes.Mess
 					}
 
 					if err = handlerFunc.Handle(ctx, message); err != nil {
-						//processErrCh <- err
+						// processErrCh <- err
 						// Message stays in the queue and will be processed again.
 						// It will be visible again after visibility timeout.
 						// Can return into the queue if needed by setting the visibility timeout to 0.

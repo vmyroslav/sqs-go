@@ -126,10 +126,10 @@ func (c *SQSConsumer[T]) Consume(ctx context.Context, queueURL string, messageHa
 	)
 
 	defer func() {
-		//close(msgs)
+		// close(msgs)
 		close(stopCh)
-		//close(pollerErrCh)
-		//close(processErrCh)
+		// close(pollerErrCh)
+		// close(processErrCh)
 		cancelProcess()
 		cancelPoller()
 
@@ -157,7 +157,7 @@ func (c *SQSConsumer[T]) Consume(ctx context.Context, queueURL string, messageHa
 	select {
 	case <-ctx.Done():
 		c.logger.InfoContext(ctx, "context is canceled. Shutting down consumer.")
-		//cancel()
+		// cancel()
 
 		return ctx.Err()
 	case <-stopCh:

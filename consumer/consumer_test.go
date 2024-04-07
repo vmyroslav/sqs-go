@@ -4,12 +4,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/stretchr/testify/require"
 	"math/rand"
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/stretchr/testify/require"
 
 	"github.com/aws/aws-sdk-go-v2/service/sqs"
 	sqstypes "github.com/aws/aws-sdk-go-v2/service/sqs/types"
@@ -120,6 +121,7 @@ func TestSQSConsumer_Consume_IsRunning(t *testing.T) {
 		return c.IsRunning()
 	}, 500*time.Millisecond, 10*time.Millisecond)
 }
+
 func TestSQSConsumer_Consume_ShouldListenToContextCancellation(t *testing.T) {
 	t.Parallel()
 

@@ -52,7 +52,7 @@ func TestMiddlewareAdapter(t *testing.T) {
 			return nil
 		})
 
-		var receivedCh = make(chan struct{}, 1)
+		receivedCh := make(chan struct{}, 1)
 		defer close(receivedCh)
 
 		m := func(next HandlerFunc[any]) HandlerFunc[any] {
@@ -62,7 +62,7 @@ func TestMiddlewareAdapter(t *testing.T) {
 			}
 		}
 
-		//mm := m(handler) cannot use handler (type HandlerFunc[customMsg]) as type HandlerFunc[any] in argument to m
+		// mm := m(handler) cannot use handler (type HandlerFunc[customMsg]) as type HandlerFunc[any] in argument to m
 
 		mwHandler := MiddlewareAdapter[customMsg](m)(handler)
 		err := mwHandler(context.Background(), customMsg{Payload: "test message"})
