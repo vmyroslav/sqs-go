@@ -16,7 +16,9 @@ tasks:
   test:
     cmds:
       - go list ./consumer/... | grep -v /mock_ > packages.out
-      - go test -gcflags=-l -covermode=atomic -coverprofile=coverage.out -race $(cat packages.out)
+      - go test -gcflags=-l -covermode=atomic -coverprofile=coverage.tmp -race $(cat packages.out)
+      - cat coverage.tmp | grep -v mock_ > coverage.out
+      - rm coverage.tmp
   update-deps:
     desc: Update dependencies
     cmds:

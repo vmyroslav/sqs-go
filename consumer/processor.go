@@ -15,14 +15,14 @@ type processorConfig struct {
 type processorSQS[T any] struct {
 	cfg            processorConfig
 	messageAdapter MessageAdapter[T]
-	acknowledger   Confirmer
+	acknowledger   acknowledger
 	logger         *slog.Logger
 }
 
 func newProcessorSQS[T any](
 	cfg processorConfig,
 	messageAdapter MessageAdapter[T],
-	acknowledger Confirmer,
+	acknowledger acknowledger,
 	logger *slog.Logger,
 ) *processorSQS[T] {
 	return &processorSQS[T]{
@@ -65,13 +65,11 @@ func (p *processorSQS[T]) Process(ctx context.Context, msgs <-chan sqstypes.Mess
 					message, err := p.messageAdapter.Transform(ctx, msg)
 					if err != nil {
 						p.logger.ErrorContext(ctx, "error transforming message", err)
-						processErrCh <- err
 
 						continue
 					}
 
 					if err = handlerFunc.Handle(ctx, message); err != nil {
-						// processErrCh <- err
 						// Message stays in the queue and will be processed again.
 						// It will be visible again after visibility timeout.
 						// Can return into the queue if needed by setting the visibility timeout to 0.
@@ -91,7 +89,6 @@ func (p *processorSQS[T]) Process(ctx context.Context, msgs <-chan sqstypes.Mess
 
 					if err = p.acknowledger.Ack(ctx, msg); err != nil {
 						p.logger.ErrorContext(ctx, "error acknowledging message", err)
-						processErrCh <- err
 					}
 				}
 			}

@@ -44,7 +44,7 @@ func (f MessageAdapterFunc[T]) Transform(ctx context.Context, msg sqstypes.Messa
 	return f(ctx, msg)
 }
 
-type Confirmer interface {
+type acknowledger interface {
 	Ack(ctx context.Context, msg sqstypes.Message) error
 	Reject(ctx context.Context, msg sqstypes.Message) error
 }
@@ -58,7 +58,7 @@ type SQSConsumer[T any] struct {
 	poller         poller
 	sqsClient      *sqs.Client
 	messageAdapter MessageAdapter[T]
-	confirmer      Confirmer
+	confirmer      acknowledger
 	processor      Processor[T]
 	middlewares    []Middleware[T]
 
@@ -157,11 +157,39 @@ func (c *SQSConsumer[T]) Consume(ctx context.Context, queueURL string, messageHa
 	select {
 	case <-ctx.Done():
 		c.logger.InfoContext(ctx, "context is canceled. Shutting down consumer.")
-		// cancel()
 
 		return ctx.Err()
-	case <-stopCh:
+	case <-c.stopSignalCh:
+		c.logger.InfoContext(ctx, "stop signal received. Shutting down consumer.")
 		cancelPoller()
+
+		// Wait for the poller to finish
+		if err := <-pollerErrCh; err != nil {
+			c.logger.ErrorContext(ctx, "poller error", err)
+
+			return err
+		}
+
+		// Wait for the processor to finish consuming the messages in the buffer
+		if err := <-processErrCh; err != nil {
+			c.logger.ErrorContext(ctx, "processing error", err)
+
+			return err
+		}
+
+		close(c.stoppedCh)
+
+		return nil
+	case err := <-pollerErrCh:
+		c.logger.Error("poller stopped unexpectedly", "error", err)
+
+		return err
+	case err := <-processErrCh:
+		if err != nil {
+			c.logger.ErrorContext(ctx, "processor stopped unexpectedly", "error", err)
+
+			return err
+		}
 	}
 
 	return nil

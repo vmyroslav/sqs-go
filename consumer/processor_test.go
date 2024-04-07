@@ -106,7 +106,6 @@ func Test_Process_WhenContextIsCancelled_ExitsWithoutError(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-// flakky test
 func Test_Process_WhenMessageIsReceived_CallsMessageHandlerWithCorrectMessage(t *testing.T) {
 	t.Parallel()
 
