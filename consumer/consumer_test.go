@@ -28,7 +28,6 @@ var (
 		VisibilityTimeout:       1,
 		ErrorNumberThreshold:    -1,
 		GracefulShutdownTimeout: 3,
-		ReturnErrors:            false,
 	}
 )
 

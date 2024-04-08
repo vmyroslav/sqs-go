@@ -106,7 +106,7 @@ func Test_Process_WhenContextIsCancelled_ExitsWithoutError(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-func Test_Process_WhenMessageIsReceived_CallsMessageHandlerWithCorrectMessage(t *testing.T) {
+func Test_Process_WhenMessageIsReceived_CallsHandlerWithCorrectMessage(t *testing.T) {
 	t.Parallel()
 
 	var (

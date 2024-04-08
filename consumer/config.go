@@ -26,10 +26,8 @@ type Config struct {
 	VisibilityTimeout int32
 	// MaxNumberOfRetries is the maximum number of retries for a message polling. -1 means infinite retries
 	ErrorNumberThreshold int32
-
+	// GracefulShutdownTimeout is the timeout for graceful shutdown.
 	GracefulShutdownTimeout int32
-
-	ReturnErrors bool
 }
 
 func NewConfig(
@@ -40,6 +38,7 @@ func NewConfig(
 	waitTimeSeconds int32,
 	visibilityTimeout int32,
 	errorNumberThreshold int32,
+	gracefulShutdownTimeout int32,
 ) (*Config, error) {
 	config := &Config{
 		QueueURL:                queueURL,
@@ -49,6 +48,7 @@ func NewConfig(
 		WaitTimeSeconds:         waitTimeSeconds,
 		VisibilityTimeout:       visibilityTimeout,
 		ErrorNumberThreshold:    errorNumberThreshold,
+		GracefulShutdownTimeout: gracefulShutdownTimeout,
 	}
 
 	_, err := config.IsValid()

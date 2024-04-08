@@ -30,6 +30,7 @@ type Middleware[T any] func(next HandlerFunc[T]) HandlerFunc[T]
 // The messages are transformed to the internal format and sent to the channel.
 // The error channel is used to report errors that occurred during polling.
 // The implementation should be able to handle context cancellation.
+// poller should close the messages channel when it's done.
 type poller interface {
 	Poll(ctx context.Context, queueURL string, ch chan<- sqstypes.Message) error
 }
@@ -113,9 +114,8 @@ func (c *SQSConsumer[T]) Consume(ctx context.Context, queueURL string, messageHa
 		// requires some tuning to find the optimal value depending on the message processing time and visibility timeout
 		bufferSize = c.cfg.ProcessorWorkerPoolSize * 3
 
-		msgs = make(chan sqstypes.Message, bufferSize)
+		msgs = make(chan sqstypes.Message, bufferSize) // poller should close this channel
 
-		stopCh       = make(chan struct{})
 		pollerErrCh  = make(chan error, 1)
 		processErrCh = make(chan error, 1)
 
@@ -126,12 +126,8 @@ func (c *SQSConsumer[T]) Consume(ctx context.Context, queueURL string, messageHa
 	)
 
 	defer func() {
-		// close(msgs)
-		close(stopCh)
-		// close(pollerErrCh)
-		// close(processErrCh)
-		cancelProcess()
 		cancelPoller()
+		cancelProcess()
 
 		c.mu.Lock()
 		c.isRunning = false
@@ -221,14 +217,6 @@ func (c *SQSConsumer[T]) IsRunning() bool {
 	defer c.mu.RUnlock()
 
 	return c.isRunning
-}
-
-func (c *SQSConsumer[T]) sendError(err error) {
-	if c.cfg.ReturnErrors {
-		c.errors <- err
-	} else {
-		c.logger.Error("error occurred", "error", err)
-	}
 }
 
 func newMessageHandlerFunc[T any](handler Handler[T]) HandlerFunc[T] {
