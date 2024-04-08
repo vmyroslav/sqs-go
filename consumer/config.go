@@ -1,6 +1,9 @@
 package consumer
 
-import "fmt"
+import (
+	"fmt"
+	"net/url"
+)
 
 type ErrWrongConfig struct {
 	Err error
@@ -74,7 +77,12 @@ func NewDefaultConfig(queueURL string) *Config {
 
 func (c *Config) IsValid() (bool, error) {
 	if c.QueueURL == "" {
-		return false, &ErrWrongConfig{Err: fmt.Errorf("queueURL cannot be empty")}
+		return false, &ErrWrongConfig{Err: fmt.Errorf("queueURL is empty")}
+	}
+
+	_, err := url.ParseRequestURI(c.QueueURL)
+	if err != nil {
+		return false, &ErrWrongConfig{Err: fmt.Errorf("queueURL is not a valid URL")}
 	}
 
 	if c.ProcessorWorkerPoolSize <= 0 {
