@@ -9,7 +9,7 @@ import (
 	"os/signal"
 	"time"
 
-	"github.com/vmyroslav/sqs-consumer/consumer"
+	"github.com/vmyroslav/sqs-go/consumer"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/sqs"

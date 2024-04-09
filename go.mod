@@ -1,4 +1,4 @@
-module github.com/vmyroslav/sqs-consumer
+module github.com/vmyroslav/sqs-go
 
 go 1.22
 
