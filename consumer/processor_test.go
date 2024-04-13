@@ -3,6 +3,7 @@ package consumer
 import (
 	"context"
 	"fmt"
+	"io"
 	"log/slog"
 	"os"
 	"sync"
@@ -169,20 +170,13 @@ func Test_Process_HandlingAckErrors(t *testing.T) {
 		pCfg = processorConfig{
 			WorkerPoolSize: 2,
 		}
-		sqsClient = newMockSqsConnector(t)
-		logger    = slog.New(slog.NewJSONHandler(os.Stdout, nil))
-		msgBody   = "original message"
+		logger  = slog.New(slog.NewJSONHandler(io.Discard, nil))
+		msgBody = "original message"
 
 		handler = HandlerFunc[sqstypes.Message](func(ctx context.Context, msg sqstypes.Message) error {
 			return nil
 		})
 	)
-
-	sqsClient.On(
-		"DeleteMessage",
-		mock.Anything,
-		mock.Anything,
-	).Return(nil, fmt.Errorf("failed to delete message"))
 
 	p := newProcessorSQS[sqstypes.Message](
 		pCfg,
@@ -198,7 +192,6 @@ func Test_Process_HandlingAckErrors(t *testing.T) {
 
 	msgs <- sqstypes.Message{Body: aws.String(msgBody)}
 	defer close(msgs)
-
 }
 
 // mockAcknowledger is a mock implementation of acknowledger interface
