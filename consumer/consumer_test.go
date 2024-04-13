@@ -88,6 +88,88 @@ func TestSQSConsumer_Consume_SuccessfullyProcessMessages(t *testing.T) {
 	}
 }
 
+func TestSQSConsumer_Consume_MiddlewareOrder(t *testing.T) {
+	t.Parallel()
+
+	var (
+		messagesToProduce = 1
+		sqsClient         = newSQSConnectorMock(t, messagesToProduce)
+
+		ctx, cancel = context.WithCancel(context.Background())
+
+		middlewareCalls []string
+		mu              sync.RWMutex
+
+		handler = HandlerFunc[mockMessage](func(ctx context.Context, msg mockMessage) error {
+			mu.Lock()
+			defer mu.Unlock()
+			middlewareCalls = append(middlewareCalls, "handler")
+
+			return nil
+		})
+
+		middleware1 = func(next HandlerFunc[mockMessage]) HandlerFunc[mockMessage] {
+			return func(ctx context.Context, msg mockMessage) error {
+				mu.Lock()
+				middlewareCalls = append(middlewareCalls, "middleware1")
+				mu.Unlock()
+				return next(ctx, msg)
+			}
+		}
+
+		middleware2 = func(next HandlerFunc[mockMessage]) HandlerFunc[mockMessage] {
+			return func(ctx context.Context, msg mockMessage) error {
+				mu.Lock()
+				middlewareCalls = append(middlewareCalls, "middleware2")
+				mu.Unlock()
+				return next(ctx, msg)
+			}
+		}
+
+		middleware3 = func(next HandlerFunc[mockMessage]) HandlerFunc[mockMessage] {
+			return func(ctx context.Context, msg mockMessage) error {
+				mu.Lock()
+				middlewareCalls = append(middlewareCalls, "middleware3")
+				mu.Unlock()
+				return next(ctx, msg)
+			}
+		}
+
+		middleware4 = func(next HandlerFunc[mockMessage]) HandlerFunc[mockMessage] {
+			return func(ctx context.Context, msg mockMessage) error {
+				res := next(ctx, msg)
+				mu.Lock()
+				middlewareCalls = append(middlewareCalls, "middleware4")
+				mu.Unlock()
+
+				return res
+			}
+		}
+	)
+
+	defer cancel()
+
+	c := NewSQSConsumer[mockMessage](
+		sqsCfg,
+		sqsClient,
+		NewJSONMessageAdapter[mockMessage](),
+		[]Middleware[mockMessage]{middleware1, middleware2, middleware3, middleware4},
+		nil,
+	)
+
+	go func() {
+		_ = c.Consume(ctx, sqsCfg.QueueURL, handler)
+	}()
+
+	assert.Eventually(t, func() bool {
+		mu.RLock()
+		defer mu.RUnlock()
+		return assert.Len(t, middlewareCalls, 5)
+	}, 100*time.Millisecond, 10*time.Millisecond)
+
+	assert.Equal(t, []string{"middleware1", "middleware2", "middleware3", "handler", "middleware4"}, middlewareCalls)
+}
+
 func TestSQSConsumer_Consume_IsRunning(t *testing.T) {
 	t.Parallel()
 
@@ -160,7 +242,54 @@ func TestSQSConsumer_Consume_ShouldListenToContextCancellation(t *testing.T) {
 	assert.ErrorIs(t, <-errCh, context.DeadlineExceeded)
 }
 
+// TestSQSConsumer_Close_AllMessagesProcessed tests the graceful shutdown of the SQSConsumer.
+// It verifies that all messages are processed before the consumer stops, even after the Close method is called.
+// If the consumer does not process all messages within a predefined timeout, the test fails.
+func TestSQSConsumer_Close_AllMessagesProcessed(t *testing.T) {
+	var (
+		messagesToProduce = 100
+		sqsClient         = newSQSConnectorMock(t, messagesToProduce)
+		processedMessages = make(chan sqstypes.Message, messagesToProduce)
+
+		ctx, cancel = context.WithCancel(context.Background())
+
+		handler = HandlerFunc[sqstypes.Message](func(ctx context.Context, msg sqstypes.Message) error {
+			time.Sleep(10 * time.Millisecond)
+			processedMessages <- msg
+
+			return nil
+		})
+	)
+
+	defer cancel()
+
+	c := NewSQSConsumer[sqstypes.Message](
+		sqsCfg,
+		sqsClient,
+		NewJSONMessageAdapter[sqstypes.Message](),
+		nil,
+		nil,
+	)
+
+	go func() {
+		err := c.Consume(ctx, "queueURL", handler)
+		assert.NoError(t, err)
+	}()
+
+	// Allow the consumer to start and process some messages
+	time.Sleep(20 * time.Millisecond)
+
+	// Call Close and expect it to return within the stop timeout
+	closeErr := c.Close()
+	assert.NoError(t, closeErr)
+
+	// Check that all messages were processed
+	assert.Equal(t, len(sqsClient.expectedMessages), len(processedMessages))
+}
+
 func TestMessageAdapterFunc_Transform(t *testing.T) {
+	t.Parallel()
+
 	transformFunc := MessageAdapterFunc[string](func(ctx context.Context, msg sqstypes.Message) (string, error) {
 		return *msg.Body, nil
 	})
