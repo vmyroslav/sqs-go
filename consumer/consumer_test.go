@@ -119,6 +119,9 @@ func TestSQSConsumer_Consume_IsRunning(t *testing.T) {
 	assert.Eventually(t, func() bool {
 		return c.IsRunning()
 	}, 500*time.Millisecond, 10*time.Millisecond)
+
+	isRunningError := c.Consume(ctx, sqsCfg.QueueURL, handler)
+	require.Error(t, isRunningError)
 }
 
 func TestSQSConsumer_Consume_ShouldListenToContextCancellation(t *testing.T) {
@@ -155,6 +158,20 @@ func TestSQSConsumer_Consume_ShouldListenToContextCancellation(t *testing.T) {
 	}, 1*time.Second, 10*time.Millisecond)
 
 	assert.ErrorIs(t, <-errCh, context.DeadlineExceeded)
+}
+
+func TestMessageAdapterFunc_Transform(t *testing.T) {
+	transformFunc := MessageAdapterFunc[string](func(ctx context.Context, msg sqstypes.Message) (string, error) {
+		return *msg.Body, nil
+	})
+
+	msg := sqstypes.Message{
+		Body: aws.String("test message"),
+	}
+
+	result, err := transformFunc.Transform(context.Background(), msg)
+	require.NoError(t, err)
+	assert.Equal(t, "test message", result)
 }
 
 type mockSQSConnector struct {

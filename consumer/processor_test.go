@@ -2,8 +2,10 @@ package consumer
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"os"
+	"sync"
 	"testing"
 	"time"
 
@@ -157,4 +159,85 @@ func Test_Process_WhenMessageIsReceived_CallsHandlerWithCorrectMessage(t *testin
 	case <-time.After(1 * time.Second):
 		t.Error("Test did not complete within the expected time")
 	}
+}
+
+func Test_Process_HandlingAckErrors(t *testing.T) {
+	t.Parallel()
+
+	var (
+		msgs = make(chan sqstypes.Message, 1)
+		pCfg = processorConfig{
+			WorkerPoolSize: 2,
+		}
+		sqsClient = newMockSqsConnector(t)
+		logger    = slog.New(slog.NewJSONHandler(os.Stdout, nil))
+		msgBody   = "original message"
+
+		handler = HandlerFunc[sqstypes.Message](func(ctx context.Context, msg sqstypes.Message) error {
+			return nil
+		})
+	)
+
+	sqsClient.On(
+		"DeleteMessage",
+		mock.Anything,
+		mock.Anything,
+	).Return(nil, fmt.Errorf("failed to delete message"))
+
+	p := newProcessorSQS[sqstypes.Message](
+		pCfg,
+		NewDummyAdapter[sqstypes.Message](),
+		newMockAcknowledger(fmt.Errorf("failed to ack message"), 3),
+		logger,
+	)
+
+	go func() {
+		err := p.Process(context.Background(), msgs, handler)
+		assert.NoError(t, err)
+	}()
+
+	msgs <- sqstypes.Message{Body: aws.String(msgBody)}
+	defer close(msgs)
+
+}
+
+// mockAcknowledger is a mock implementation of acknowledger interface
+type mockAcknowledger struct {
+	err               error
+	numberOfSeqErrors int
+	callsCount        int
+
+	mu sync.RWMutex
+}
+
+func newMockAcknowledger(err error, numberOfSeqErrors int) *mockAcknowledger {
+	return &mockAcknowledger{
+		err:               err,
+		numberOfSeqErrors: numberOfSeqErrors,
+		mu:                sync.RWMutex{},
+	}
+}
+
+func (m *mockAcknowledger) Ack(_ context.Context, _ sqstypes.Message) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.callsCount++
+
+	if m.callsCount < m.numberOfSeqErrors {
+		return m.err
+	}
+
+	return nil
+}
+
+func (m *mockAcknowledger) Reject(_ context.Context, _ sqstypes.Message) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.callsCount++
+
+	if m.callsCount < m.numberOfSeqErrors {
+		return m.err
+	}
+
+	return nil
 }
