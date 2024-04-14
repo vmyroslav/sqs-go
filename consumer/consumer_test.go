@@ -10,11 +10,10 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/stretchr/testify/require"
-
 	"github.com/aws/aws-sdk-go-v2/service/sqs"
 	sqstypes "github.com/aws/aws-sdk-go-v2/service/sqs/types"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 var (
@@ -49,7 +48,7 @@ func TestSQSConsumer_Consume_SuccessfullyProcessMessages(t *testing.T) {
 
 		ctx, cancel = context.WithCancel(context.Background())
 
-		handler = HandlerFunc[mockMessage](func(ctx context.Context, msg mockMessage) error {
+		handler = HandlerFunc[mockMessage](func(_ context.Context, msg mockMessage) error {
 			mu.Lock()
 			defer mu.Unlock()
 			receivedMessages = append(receivedMessages, msg)
@@ -98,7 +97,7 @@ func TestSQSConsumer_Consume_MiddlewareOrder(t *testing.T) {
 		middlewareCalls []string
 		mu              sync.RWMutex
 
-		handler = HandlerFunc[mockMessage](func(ctx context.Context, msg mockMessage) error {
+		handler = HandlerFunc[mockMessage](func(_ context.Context, _ mockMessage) error {
 			mu.Lock()
 			defer mu.Unlock()
 			middlewareCalls = append(middlewareCalls, "handler")
@@ -178,7 +177,7 @@ func TestSQSConsumer_Consume_IsRunning(t *testing.T) {
 
 		ctx, cancel = context.WithTimeout(context.Background(), 100*time.Millisecond)
 
-		handler = HandlerFunc[mockMessage](func(ctx context.Context, msg mockMessage) error {
+		handler = HandlerFunc[mockMessage](func(_ context.Context, _ mockMessage) error {
 			return nil
 		})
 	)
@@ -214,7 +213,7 @@ func TestSQSConsumer_Consume_ShouldListenToContextCancellation(t *testing.T) {
 
 		ctx, cancel = context.WithTimeout(context.Background(), 100*time.Millisecond)
 
-		handler = HandlerFunc[mockMessage](func(ctx context.Context, msg mockMessage) error {
+		handler = HandlerFunc[mockMessage](func(_ context.Context, _ mockMessage) error {
 			return nil
 		})
 		errCh = make(chan error, 1)
@@ -252,7 +251,7 @@ func TestSQSConsumer_Close_AllMessagesProcessed(t *testing.T) {
 
 		ctx, cancel = context.WithCancel(context.Background())
 
-		handler = HandlerFunc[sqstypes.Message](func(ctx context.Context, msg sqstypes.Message) error {
+		handler = HandlerFunc[sqstypes.Message](func(_ context.Context, msg sqstypes.Message) error {
 			time.Sleep(10 * time.Millisecond)
 			processedMessages <- msg
 
@@ -309,7 +308,7 @@ func TestSQSConsumer_Close_NotRunningConsumer(t *testing.T) {
 func TestMessageAdapterFunc_Transform(t *testing.T) {
 	t.Parallel()
 
-	transformFunc := MessageAdapterFunc[string](func(ctx context.Context, msg sqstypes.Message) (string, error) {
+	transformFunc := MessageAdapterFunc[string](func(_ context.Context, msg sqstypes.Message) (string, error) {
 		return *msg.Body, nil
 	})
 

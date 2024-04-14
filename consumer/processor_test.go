@@ -12,7 +12,6 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/sqs"
-
 	sqstypes "github.com/aws/aws-sdk-go-v2/service/sqs/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -134,7 +133,7 @@ func Test_Process_WhenMessageIsReceived_CallsHandlerWithCorrectMessage(t *testin
 
 	handlerCalled := make(chan bool, 1)
 
-	handler := HandlerFunc[sqstypes.Message](func(ctx context.Context, msg sqstypes.Message) error {
+	handler := HandlerFunc[sqstypes.Message](func(_ context.Context, msg sqstypes.Message) error {
 		handlerCalled <- true
 
 		assert.Equal(t, msgBody, *msg.Body)
@@ -166,7 +165,7 @@ func Test_Process_HandlingAckErrors(t *testing.T) {
 		logger  = slog.New(slog.NewJSONHandler(io.Discard, nil))
 		msgBody = "original message"
 
-		handler = HandlerFunc[sqstypes.Message](func(ctx context.Context, msg sqstypes.Message) error {
+		handler = HandlerFunc[sqstypes.Message](func(_ context.Context, _ sqstypes.Message) error {
 			return nil
 		})
 	)

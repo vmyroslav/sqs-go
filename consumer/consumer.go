@@ -54,7 +54,7 @@ type Processor[T any] interface {
 	Process(ctx context.Context, ch <-chan sqstypes.Message, handler Handler[T]) error
 }
 
-type SQSConsumer[T any] struct {
+type SQSConsumer[T any] struct { // nolint:govet
 	cfg         Config
 	poller      poller
 	processor   Processor[T]

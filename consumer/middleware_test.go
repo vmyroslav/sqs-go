@@ -52,7 +52,9 @@ func TestMiddlewareAdapter(t *testing.T) {
 	}
 
 	t.Run("correct message type", func(t *testing.T) {
-		handler := HandlerFunc[customMsg](func(ctx context.Context, msg customMsg) error {
+		t.Parallel()
+
+		handler := HandlerFunc[customMsg](func(_ context.Context, _ customMsg) error {
 			return nil
 		})
 
@@ -83,14 +85,14 @@ func TestNewPanicRecoverMiddleware(t *testing.T) {
 	}{
 		{
 			name: "handler panics",
-			handler: func(ctx context.Context, msg any) error {
+			handler: func(_ context.Context, _ any) error {
 				panic("test panic")
 			},
 			wantErr: true,
 		},
 		{
 			name: "handler does not panic",
-			handler: func(ctx context.Context, msg any) error {
+			handler: func(_ context.Context, _ any) error {
 				return nil
 			},
 			wantErr: false,
@@ -126,7 +128,7 @@ func TestNewTimeLimitMiddleware(t *testing.T) {
 	}{
 		{
 			name: "handler exceeds timeout",
-			handler: func(ctx context.Context, msg any) error {
+			handler: func(_ context.Context, _ any) error {
 				time.Sleep(300 * time.Millisecond)
 				return nil
 			},
@@ -135,7 +137,7 @@ func TestNewTimeLimitMiddleware(t *testing.T) {
 		},
 		{
 			name: "handler does not exceed timeout",
-			handler: func(ctx context.Context, msg any) error {
+			handler: func(_ context.Context, _ any) error {
 				time.Sleep(10 * time.Millisecond)
 				return nil
 			},

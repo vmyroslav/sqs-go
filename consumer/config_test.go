@@ -1,9 +1,10 @@
 package consumer
 
 import (
+	"testing"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"testing"
 )
 
 func TestNewConfig(t *testing.T) {

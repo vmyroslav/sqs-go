@@ -21,7 +21,7 @@ type pollerConfig struct {
 	ErrorNumberThreshold int32
 }
 
-type sqsPoller struct {
+type sqsPoller struct { // nolint:govet
 	cfg       pollerConfig
 	sqsClient sqsConnector
 	logger    *slog.Logger

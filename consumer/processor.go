@@ -12,7 +12,7 @@ import (
 type processorConfig struct {
 	WorkerPoolSize int32
 }
-type processorSQS[T any] struct {
+type processorSQS[T any] struct { // nolint:govet
 	cfg            processorConfig
 	messageAdapter MessageAdapter[T]
 	acknowledger   acknowledger
@@ -67,7 +67,7 @@ func (p *processorSQS[T]) Process(ctx context.Context, msgs <-chan sqstypes.Mess
 						continue
 					}
 
-					if err = handler.Handle(ctx, message); err != nil {
+					if err = handler.Handle(ctx, message); err != nil { //nolint:wsl
 						// Message stays in the queue and will be processed again.
 						// It will be visible again after visibility timeout.
 						// If the message is not processed successfully after the maximum number of retries, it will be moved to the DLQ if configured.
