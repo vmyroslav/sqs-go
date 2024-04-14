@@ -33,14 +33,14 @@ func newProcessorSQS[T any](
 	}
 }
 
-func (p *processorSQS[T]) Process(ctx context.Context, msgs <-chan sqstypes.Message, handler Handler[T]) error {
+func (p *processorSQS[T]) Process(ctx context.Context, msgs <-chan sqstypes.Message, handler Handler[T]) error { // nolint: cyclop
 	var (
 		poolSize = int(p.cfg.WorkerPoolSize)
 		wg       sync.WaitGroup
 	)
 
 	if p.cfg.WorkerPoolSize < 1 {
-		return &ErrWrongConfig{Err: fmt.Errorf("invalid worker pool size: %d", p.cfg.WorkerPoolSize)}
+		return &WrongConfigError{Err: fmt.Errorf("invalid worker pool size: %d", p.cfg.WorkerPoolSize)}
 	}
 
 	for i := 0; i < poolSize; i++ {

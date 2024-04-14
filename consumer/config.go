@@ -5,11 +5,11 @@ import (
 	"net/url"
 )
 
-type ErrWrongConfig struct {
+type WrongConfigError struct {
 	Err error
 }
 
-func (e *ErrWrongConfig) Error() string {
+func (e *WrongConfigError) Error() string {
 	return fmt.Sprintf("wrong config: %s", e.Err)
 }
 
@@ -75,34 +75,34 @@ func NewDefaultConfig(queueURL string) *Config {
 	}
 }
 
-func (c *Config) IsValid() (bool, error) {
+func (c *Config) IsValid() (bool, error) { // nolint: cyclop
 	if c.QueueURL == "" {
-		return false, &ErrWrongConfig{Err: fmt.Errorf("queueURL is empty")}
+		return false, &WrongConfigError{Err: fmt.Errorf("queueURL is empty")}
 	}
 
 	_, err := url.ParseRequestURI(c.QueueURL)
 	if err != nil {
-		return false, &ErrWrongConfig{Err: fmt.Errorf("queueURL is not a valid URL")}
+		return false, &WrongConfigError{Err: fmt.Errorf("queueURL is not a valid URL")}
 	}
 
 	if c.ProcessorWorkerPoolSize <= 0 {
-		return false, &ErrWrongConfig{Err: fmt.Errorf("handlerWorkerPoolSize must be greater than 0")}
+		return false, &WrongConfigError{Err: fmt.Errorf("handlerWorkerPoolSize must be greater than 0")}
 	}
 
 	if c.PollerWorkerPoolSize <= 0 {
-		return false, &ErrWrongConfig{Err: fmt.Errorf("pollerWorkerPoolSize must be greater than 0")}
+		return false, &WrongConfigError{Err: fmt.Errorf("pollerWorkerPoolSize must be greater than 0")}
 	}
 
 	if c.MaxNumberOfMessages <= 0 || c.MaxNumberOfMessages > 10 {
-		return false, &ErrWrongConfig{Err: fmt.Errorf("maxNumberOfMessages must be between 1 and 10")}
+		return false, &WrongConfigError{Err: fmt.Errorf("maxNumberOfMessages must be between 1 and 10")}
 	}
 
 	if c.WaitTimeSeconds < 0 || c.WaitTimeSeconds > 20 {
-		return false, &ErrWrongConfig{Err: fmt.Errorf("waitTimeSeconds must be between 0 and 20")}
+		return false, &WrongConfigError{Err: fmt.Errorf("waitTimeSeconds must be between 0 and 20")}
 	}
 
 	if c.VisibilityTimeout < 0 || c.VisibilityTimeout > 43200 {
-		return false, &ErrWrongConfig{Err: fmt.Errorf("visibilityTimeout must be between 0 and 43200")}
+		return false, &WrongConfigError{Err: fmt.Errorf("visibilityTimeout must be between 0 and 43200")}
 	}
 
 	return true, nil

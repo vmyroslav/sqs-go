@@ -141,7 +141,7 @@ func TestSqsPoller_Poll(t *testing.T) { // nolint: gocognit
 			mock.AnythingOfType("*context.cancelCtx"),
 			mock.Anything,
 			mock.Anything,
-		).Run(func(args mock.Arguments) {
+		).Run(func(_ mock.Arguments) {
 			<-time.After(5 * time.Millisecond) // Simulate a delay in the ReceiveMessage method
 		}).Return(&sqs.ReceiveMessageOutput{
 			Messages: []sqstypes.Message{
@@ -233,7 +233,7 @@ func TestSqsPoller_Poll(t *testing.T) { // nolint: gocognit
 			mock.Anything,
 			mock.Anything,
 		).Return(
-			func(ctx context.Context, input *sqs.ReceiveMessageInput, opts ...func(*sqs.Options)) (*sqs.ReceiveMessageOutput, error) {
+			func(_ context.Context, _ *sqs.ReceiveMessageInput, _ ...func(*sqs.Options)) (*sqs.ReceiveMessageOutput, error) {
 				if atomic.LoadInt32(&errorCount) < 3 {
 					atomic.AddInt32(&errorCount, 1)
 

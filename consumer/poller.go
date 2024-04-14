@@ -39,7 +39,7 @@ func newSqsPoller(
 	}
 }
 
-func (p *sqsPoller) Poll(parentCtx context.Context, queueURL string, ch chan<- sqstypes.Message) error {
+func (p *sqsPoller) Poll(parentCtx context.Context, queueURL string, ch chan<- sqstypes.Message) error { //nolint: cyclop
 	var (
 		poolSize = int(p.cfg.WorkerPoolSize)
 		errCh    = make(chan error, poolSize)
@@ -63,7 +63,7 @@ func (p *sqsPoller) Poll(parentCtx context.Context, queueURL string, ch chan<- s
 		go func() { // nolint: wsl
 			defer wg.Done()
 
-			var retryCount int32 = 0
+			var retryCount int32
 
 			for {
 				select {

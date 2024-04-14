@@ -20,14 +20,14 @@ func TestSyncAcknowledger_Ack(t *testing.T) {
 	}{
 		{
 			name: "DeleteMessage success",
-			deleteMessage: func(ctx context.Context, params *sqs.DeleteMessageInput, optFns ...func(*sqs.Options)) (*sqs.DeleteMessageOutput, error) {
+			deleteMessage: func(_ context.Context, _ *sqs.DeleteMessageInput, _ ...func(*sqs.Options)) (*sqs.DeleteMessageOutput, error) {
 				return &sqs.DeleteMessageOutput{}, nil
 			},
 			wantErr: false,
 		},
 		{
 			name: "DeleteMessage error",
-			deleteMessage: func(ctx context.Context, params *sqs.DeleteMessageInput, optFns ...func(*sqs.Options)) (*sqs.DeleteMessageOutput, error) {
+			deleteMessage: func(_ context.Context, _ *sqs.DeleteMessageInput, _ ...func(*sqs.Options)) (*sqs.DeleteMessageOutput, error) {
 				return nil, errors.New("delete message error")
 			},
 			wantErr: true,

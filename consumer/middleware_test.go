@@ -14,7 +14,7 @@ type mockHandler struct {
 	err error
 }
 
-func (m *mockHandler) Handle(ctx context.Context, msg interface{}) error {
+func (m *mockHandler) Handle(_ context.Context, _ interface{}) error {
 	return m.err
 }
 
@@ -24,6 +24,8 @@ func TestNewIgnoreErrorsMiddleware(t *testing.T) {
 	middleware := NewIgnoreErrorsMiddleware[any](nil)
 
 	t.Run("handler returns error", func(t *testing.T) {
+		t.Parallel()
+
 		handler := &mockHandler{err: fmt.Errorf("test error")}
 		mwHandler := middleware(handler.Handle)
 
@@ -32,6 +34,8 @@ func TestNewIgnoreErrorsMiddleware(t *testing.T) {
 	})
 
 	t.Run("handler returns no error", func(t *testing.T) {
+		t.Parallel()
+
 		handler := &mockHandler{err: nil}
 		mwHandler := middleware(handler.Handle)
 

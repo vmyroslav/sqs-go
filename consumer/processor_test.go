@@ -43,7 +43,7 @@ func Test_Process_WhenMessagesChannelIsClosed(t *testing.T) {
 			WorkerPoolSize: 2,
 		}
 		sqsClient = newMockSqsConnector(t)
-		handler   = HandlerFunc[sqstypes.Message](func(ctx context.Context, msg sqstypes.Message) error {
+		handler   = HandlerFunc[sqstypes.Message](func(_ context.Context, _ sqstypes.Message) error {
 			return nil
 		})
 		callCh = make(chan struct{}, 1)
@@ -52,7 +52,7 @@ func Test_Process_WhenMessagesChannelIsClosed(t *testing.T) {
 	defer cancel()
 
 	sqsClient.On("DeleteMessage", mock.Anything, mock.Anything).
-		Run(func(args mock.Arguments) {
+		Run(func(_ mock.Arguments) {
 			callCh <- struct{}{} // mock the processing of the message
 		}).Return(&sqs.DeleteMessageOutput{}, nil)
 
@@ -86,7 +86,7 @@ func Test_Process_WhenContextIsCancelled_ExitsWithoutError(t *testing.T) {
 		}
 		sqsClient = newMockSqsConnector(t)
 		logger    = slog.New(slog.NewJSONHandler(os.Stdout, nil))
-		handler   = HandlerFunc[sqstypes.Message](func(ctx context.Context, msg sqstypes.Message) error {
+		handler   = HandlerFunc[sqstypes.Message](func(_ context.Context, _ sqstypes.Message) error {
 			return nil
 		})
 	)
@@ -113,26 +113,19 @@ func Test_Process_WhenMessageIsReceived_CallsHandlerWithCorrectMessage(t *testin
 	t.Parallel()
 
 	var (
-		queueURL = "https://sqs.us-east-1.amazonaws.com/123456789012/MyQueue"
-		msgs     = make(chan sqstypes.Message, 1)
-		pCfg     = processorConfig{
+		msgs = make(chan sqstypes.Message, 1)
+		pCfg = processorConfig{
 			WorkerPoolSize: 2,
 		}
-		sqsClient = newMockSqsConnector(t)
-		logger    = slog.New(slog.NewJSONHandler(os.Stdout, nil))
-		msgBody   = "original message"
+		mockAck = newMockAcknowledger(nil, 1)
+		logger  = slog.New(slog.NewJSONHandler(os.Stdout, nil))
+		msgBody = "original message"
 	)
-
-	sqsClient.On(
-		"DeleteMessage",
-		mock.Anything,
-		mock.Anything,
-	).Return(nil, nil)
 
 	p := newProcessorSQS[sqstypes.Message](
 		pCfg,
 		NewDummyAdapter[sqstypes.Message](),
-		newSyncAcknowledger(queueURL, sqsClient),
+		mockAck,
 		logger,
 	)
 
@@ -178,6 +171,8 @@ func Test_Process_HandlingAckErrors(t *testing.T) {
 		})
 	)
 
+	defer close(msgs)
+
 	p := newProcessorSQS[sqstypes.Message](
 		pCfg,
 		NewDummyAdapter[sqstypes.Message](),
@@ -191,7 +186,6 @@ func Test_Process_HandlingAckErrors(t *testing.T) {
 	}()
 
 	msgs <- sqstypes.Message{Body: aws.String(msgBody)}
-	defer close(msgs)
 }
 
 // mockAcknowledger is a mock implementation of acknowledger interface
@@ -214,6 +208,7 @@ func newMockAcknowledger(err error, numberOfSeqErrors int) *mockAcknowledger {
 func (m *mockAcknowledger) Ack(_ context.Context, _ sqstypes.Message) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
+
 	m.callsCount++
 
 	if m.callsCount < m.numberOfSeqErrors {
@@ -226,6 +221,7 @@ func (m *mockAcknowledger) Ack(_ context.Context, _ sqstypes.Message) error {
 func (m *mockAcknowledger) Reject(_ context.Context, _ sqstypes.Message) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
+
 	m.callsCount++
 
 	if m.callsCount < m.numberOfSeqErrors {

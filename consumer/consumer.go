@@ -55,19 +55,14 @@ type Processor[T any] interface {
 }
 
 type SQSConsumer[T any] struct {
-	cfg            Config
-	poller         poller
-	sqsClient      *sqs.Client
-	messageAdapter MessageAdapter[T]
-	confirmer      acknowledger
-	processor      Processor[T]
-	middlewares    []Middleware[T]
+	cfg         Config
+	poller      poller
+	processor   Processor[T]
+	middlewares []Middleware[T]
 
 	stopSignalCh chan struct{}
 	stoppedCh    chan struct{}
 	isRunning    bool
-
-	errors chan error
 
 	logger *slog.Logger
 
@@ -154,7 +149,7 @@ func (c *SQSConsumer[T]) Consume(ctx context.Context, queueURL string, messageHa
 	case <-ctx.Done():
 		c.logger.InfoContext(ctx, "context is canceled. Shutting down consumer.")
 
-		return ctx.Err()
+		return ctx.Err() // nolint:wrapcheck
 	case <-c.stopSignalCh:
 		c.logger.InfoContext(ctx, "stop signal received. Shutting down consumer.")
 		cancelPoller()

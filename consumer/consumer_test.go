@@ -58,9 +58,7 @@ func TestSQSConsumer_Consume_SuccessfullyProcessMessages(t *testing.T) {
 		})
 	)
 
-	defer func() {
-		cancel()
-	}()
+	defer cancel()
 
 	c := NewSQSConsumer[mockMessage](sqsCfg, sqsClient, NewJSONMessageAdapter[mockMessage](), nil, nil)
 
@@ -77,7 +75,7 @@ func TestSQSConsumer_Consume_SuccessfullyProcessMessages(t *testing.T) {
 
 	// Check that all the expected messages have been received
 	for _, receivedMsg := range receivedMessages {
-		key := fmt.Sprintf("%v", receivedMsg.Key)
+		key := receivedMsg.Key
 
 		_, ok := sqsClient.expectedMessages[key]
 		if !ok {
@@ -164,6 +162,7 @@ func TestSQSConsumer_Consume_MiddlewareOrder(t *testing.T) {
 	assert.Eventually(t, func() bool {
 		mu.RLock()
 		defer mu.RUnlock()
+
 		return assert.Len(t, middlewareCalls, 5)
 	}, 100*time.Millisecond, 10*time.Millisecond)
 
@@ -281,10 +280,30 @@ func TestSQSConsumer_Close_AllMessagesProcessed(t *testing.T) {
 
 	// Call Close and expect it to return within the stop timeout
 	closeErr := c.Close()
-	assert.NoError(t, closeErr)
+	require.NoError(t, closeErr)
 
 	// Check that all messages were processed
 	assert.Equal(t, len(sqsClient.expectedMessages), len(processedMessages))
+}
+
+func TestSQSConsumer_Close_NotRunningConsumer(t *testing.T) {
+	t.Parallel()
+
+	var (
+		messagesToProduce = 100
+		sqsClient         = newSQSConnectorMock(t, messagesToProduce)
+	)
+
+	c := NewSQSConsumer[sqstypes.Message](
+		sqsCfg,
+		sqsClient,
+		NewJSONMessageAdapter[sqstypes.Message](),
+		nil,
+		nil,
+	)
+
+	err := c.Close()
+	require.NoError(t, err)
 }
 
 func TestMessageAdapterFunc_Transform(t *testing.T) {

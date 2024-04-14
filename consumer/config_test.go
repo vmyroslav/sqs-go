@@ -140,9 +140,11 @@ func TestConfig_IsValid(t *testing.T) {
 			got, err := tt.config.IsValid()
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Config.IsValid() error = %v, wantErr %v", err, tt.wantErr)
-				assert.ErrorIs(t, err, &ErrWrongConfig{})
+				assert.ErrorIs(t, err, &WrongConfigError{})
+
 				return
 			}
+
 			if got != tt.want {
 				t.Errorf("Config.IsValid() = %v, want %v", got, tt.want)
 			}
