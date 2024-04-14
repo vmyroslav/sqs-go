@@ -1,6 +1,7 @@
 package consumer
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -169,7 +170,10 @@ func TestNewInvalidConfig(t *testing.T) {
 		t.Errorf("NewConfig() error = %v, wantErr %v", err, true)
 	}
 
-	assert.ErrorIs(t, err, &WrongConfigError{})
+	var wrongConfigErr *WrongConfigError
+	if !errors.As(err, &wrongConfigErr) {
+		t.Errorf("expected error of type WrongConfigError, got %T", err)
+	}
 }
 
 func TestNewDefaultConfig(t *testing.T) {
