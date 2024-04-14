@@ -47,7 +47,7 @@ jobs:
             ${{ runner.os }}-go-${{ env.GO_VERSION }}-cache
 
       - name: Install Task
-        uses: arduino/setup-task@v1
+        uses: arduino/setup-task@v2
         with:
           version: 3.x
 
