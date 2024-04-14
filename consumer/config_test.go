@@ -153,6 +153,25 @@ func TestConfig_IsValid(t *testing.T) {
 	}
 }
 
+func TestNewInvalidConfig(t *testing.T) {
+	_, err := NewConfig(
+		"",
+		0,
+		0,
+		0,
+		0,
+		0,
+		0,
+		0,
+	)
+
+	if err == nil {
+		t.Errorf("NewConfig() error = %v, wantErr %v", err, true)
+	}
+
+	assert.ErrorIs(t, err, &WrongConfigError{})
+}
+
 func TestNewDefaultConfig(t *testing.T) {
 	queueURL := "http://localhost:4566/000000000000/queue"
 	config := NewDefaultConfig(queueURL)
