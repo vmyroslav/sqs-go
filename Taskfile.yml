@@ -27,3 +27,8 @@ tasks:
     desc: Gofumpt project files
     cmds:
       - find . -name '*.go' -type f -exec gofumpt -w {} +
+  clean:
+    desc: Clean up
+    cmds:
+      - go mod tidy
+      - task: fumpt
