@@ -156,14 +156,14 @@ func (c *SQSConsumer[T]) Consume(ctx context.Context, queueURL string, messageHa
 
 		// Wait for the poller to finish
 		if err := <-pollerErrCh; err != nil {
-			c.logger.ErrorContext(ctx, "poller error", err)
+			c.logger.ErrorContext(ctx, "poller error", "error", err)
 
 			return err
 		}
 
 		// Wait for the processor to finish consuming the messages in the buffer
 		if err := <-processErrCh; err != nil {
-			c.logger.ErrorContext(ctx, "processing error", err)
+			c.logger.ErrorContext(ctx, "processing error", "error", err)
 
 			return err
 		}
