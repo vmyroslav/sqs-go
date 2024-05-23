@@ -62,7 +62,7 @@ func (p *processorSQS[T]) Process(ctx context.Context, msgs <-chan sqstypes.Mess
 
 					message, err := p.messageAdapter.Transform(ctx, msg)
 					if err != nil {
-						p.logger.ErrorContext(ctx, "error transforming message", err)
+						p.logger.ErrorContext(ctx, "error transforming message", "error", err)
 
 						continue
 					}
@@ -73,14 +73,14 @@ func (p *processorSQS[T]) Process(ctx context.Context, msgs <-chan sqstypes.Mess
 						// If the message is not processed successfully after the maximum number of retries, it will be moved to the DLQ if configured.
 
 						if err = p.acknowledger.Reject(ctx, msg); err != nil {
-							p.logger.ErrorContext(ctx, "error rejecting message", err)
+							p.logger.ErrorContext(ctx, "error rejecting message", "error", err)
 						}
 
 						continue
 					}
 
 					if err = p.acknowledger.Ack(ctx, msg); err != nil {
-						p.logger.ErrorContext(ctx, "error acknowledging message", err)
+						p.logger.ErrorContext(ctx, "error acknowledging message", "error", err)
 					}
 				}
 			}
