@@ -136,6 +136,36 @@ func TestConfig_IsValid(t *testing.T) {
 			want:    false,
 			wantErr: true,
 		},
+		{
+			name: "Invalid Config - Invalid VisibilityTimeout Negative",
+			config: &Config{
+				QueueURL:                "http://localhost:4566/000000000000/queue",
+				ProcessorWorkerPoolSize: 2,
+				PollerWorkerPoolSize:    2,
+				MaxNumberOfMessages:     10,
+				WaitTimeSeconds:         1,
+				VisibilityTimeout:       -1,
+				ErrorNumberThreshold:    -1,
+				GracefulShutdownTimeout: 30,
+			},
+			want:    false,
+			wantErr: true,
+		},
+		{
+			name: "Invalid Config - Invalid VisibilityTimeout Too Large",
+			config: &Config{
+				QueueURL:                "http://localhost:4566/000000000000/queue",
+				ProcessorWorkerPoolSize: 2,
+				PollerWorkerPoolSize:    2,
+				MaxNumberOfMessages:     10,
+				WaitTimeSeconds:         1,
+				VisibilityTimeout:       50000,
+				ErrorNumberThreshold:    -1,
+				GracefulShutdownTimeout: 30,
+			},
+			want:    false,
+			wantErr: true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

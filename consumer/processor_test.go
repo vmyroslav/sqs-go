@@ -229,3 +229,60 @@ func (m *mockAcknowledger) Reject(_ context.Context, _ sqstypes.Message) error {
 
 	return nil
 }
+
+func Test_Process_WhenHandlerReturnsError_MessageRejected(t *testing.T) {
+	t.Parallel()
+
+	var (
+		msgs = make(chan sqstypes.Message, 1)
+		pCfg = processorConfig{
+			WorkerPoolSize: 1,
+		}
+		logger       = slog.New(slog.NewJSONHandler(io.Discard, nil))
+		msgBody      = "test message"
+		rejectCalled = make(chan bool, 1)
+	)
+
+	mockAck := &trackingAcknowledger{
+		rejectCalled: rejectCalled,
+	}
+
+	p := newProcessorSQS[sqstypes.Message](
+		pCfg,
+		NewDummyAdapter[sqstypes.Message](),
+		mockAck,
+		logger,
+	)
+
+	handler := HandlerFunc[sqstypes.Message](func(_ context.Context, _ sqstypes.Message) error {
+		return fmt.Errorf("handler error")
+	})
+
+	go func() {
+		err := p.Process(context.Background(), msgs, handler)
+		assert.NoError(t, err)
+	}()
+
+	msgs <- sqstypes.Message{Body: aws.String(msgBody)}
+	defer close(msgs)
+
+	select {
+	case called := <-rejectCalled:
+		assert.True(t, called)
+	case <-time.After(1 * time.Second):
+		t.Error("Reject was not called within expected time")
+	}
+}
+
+type trackingAcknowledger struct {
+	rejectCalled chan bool
+}
+
+func (t *trackingAcknowledger) Ack(_ context.Context, _ sqstypes.Message) error {
+	return nil
+}
+
+func (t *trackingAcknowledger) Reject(_ context.Context, _ sqstypes.Message) error {
+	t.rejectCalled <- true
+	return nil
+}
