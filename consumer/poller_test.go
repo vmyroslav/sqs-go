@@ -113,7 +113,7 @@ func TestSqsPoller_Poll(t *testing.T) { // nolint: gocognit
 			}
 		}
 
-		assert.Equal(t, len(expectedMessages), len(receivedMessages), "Did not receive the expected number of messages")
+		assert.Len(t, receivedMessages, len(expectedMessages), "Did not receive the expected number of messages")
 
 		for _, receivedMsg := range receivedMessages {
 			expectedMsg, ok := expectedMessages[*receivedMsg.MessageId]

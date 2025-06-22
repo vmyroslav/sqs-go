@@ -130,7 +130,7 @@ func (c *SQSConsumer[T]) Consume(ctx context.Context, queueURL string, messageHa
 	}()
 
 	if c.IsRunning() {
-		return fmt.Errorf("consumer is already running") // nolint:goerr113
+		return fmt.Errorf("consumer is already running")
 	}
 
 	c.mu.Lock()
@@ -203,7 +203,7 @@ func (c *SQSConsumer[T]) Close() error {
 	case <-time.After(time.Duration(c.cfg.GracefulShutdownTimeout) * time.Second):
 		c.logger.Warn("SQS consumer did not stop in time")
 
-		return fmt.Errorf("SQS consumer did not stop in time") // nolint:goerr113
+		return fmt.Errorf("SQS consumer did not stop in time")
 	}
 }
 
