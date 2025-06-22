@@ -1,29 +1,8 @@
+version: "2"
 run:
-  go: '1.22'
-  timeout: 5m
-
-linters-settings:
-  errcheck:
-    check-type-assertions: true
-  govet:
-    enable:
-      - fieldalignment
-  goconst:
-    min-len: 2
-    min-occurrences: 2
-  misspell:
-    locale: US
-  lll:
-    line-length: 140
-  gocritic:
-    enabled-tags:
-      - performance
-      - style
-      - experimental
-      - opinionated
-
+  go: "1.24"
 linters:
-  disable-all: true
+  default: none
   enable:
     - bodyclose
     - containedctx
@@ -35,16 +14,11 @@ linters:
     - errchkjson
     - errname
     - exhaustive
-    - exportloopref
-    - gosec
-    - gci
     - gochecknoinits
     - goconst
     - gocritic
     - gocyclo
-    - gofmt
     - gosec
-    - gosimple
     - govet
     - importas
     - ineffassign
@@ -60,41 +34,69 @@ linters:
     - revive
     - sloglint
     - staticcheck
-    - stylecheck
     - tagliatelle
-    - tenv
     - testifylint
     - thelper
     - tparallel
-    - typecheck
     - unconvert
     - unparam
     - unused
     - whitespace
     - wrapcheck
     - wsl
-  fast: false
-
-issues:
-  exclude-rules:
-    - text: "at least one file in a package should have a package comment"
-      linters:
-        - stylecheck
-    - text: "should have a package comment"
-      linters:
-        - revive
-    - text: "should have comment or be unexported"
-      linters:
-        - revive
-    - text: "whyNoLint"
-      linters:
-        - gocritic
-    - path: _test\.go
-      linters:
-        - gosec
-        - dupl
-        - cyclop
-        - govet
-  exclude-files:
-    - "mock_.+\\.go"
-  exclude-use-default: false
+  settings:
+    errcheck:
+      check-type-assertions: true
+    goconst:
+      min-len: 2
+      min-occurrences: 2
+    gocritic:
+      enabled-tags:
+        - performance
+        - style
+        - experimental
+        - opinionated
+    govet:
+      enable:
+        - fieldalignment
+    lll:
+      line-length: 140
+    misspell:
+      locale: US
+  exclusions:
+    generated: lax
+    rules:
+      - linters:
+          - staticcheck
+        text: at least one file in a package should have a package comment
+      - linters:
+          - revive
+        text: should have a package comment
+      - linters:
+          - revive
+        text: should have comment or be unexported
+      - linters:
+          - gocritic
+        text: whyNoLint
+      - linters:
+          - cyclop
+          - dupl
+          - gosec
+          - govet
+        path: _test\.go
+    paths:
+      - mock_.+\.go
+      - third_party$
+      - builtin$
+      - examples$
+formatters:
+  enable:
+    - gci
+    - gofmt
+  exclusions:
+    generated: lax
+    paths:
+      - mock_.+\.go
+      - third_party$
+      - builtin$
+      - examples$

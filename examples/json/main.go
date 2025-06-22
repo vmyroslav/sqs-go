@@ -9,10 +9,9 @@ import (
 	"os/signal"
 	"time"
 
-	"github.com/vmyroslav/sqs-go/consumer"
-
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/sqs"
+	"github.com/vmyroslav/sqs-go/consumer"
 )
 
 var (
@@ -35,7 +34,7 @@ func main() {
 	var (
 		ctx, cancel = context.WithTimeout(context.Background(), timeOut)
 		logger      = slog.New(slog.NewJSONHandler(os.Stdout, nil))
-		handler     = consumer.HandlerFunc[MyMessage](func(ctx context.Context, msg MyMessage) error {
+		handler     = consumer.HandlerFunc[MyMessage](func(_ context.Context, msg MyMessage) error {
 			fmt.Printf("Received message with key %s and body %s\n", msg.Key, msg.Body)
 
 			return nil
@@ -44,8 +43,11 @@ func main() {
 		middlewares []consumer.Middleware[MyMessage]
 	)
 
-	middlewares = append(middlewares, newTimeTrackingMiddleware[MyMessage]())
-	middlewares = append(middlewares, consumer.MiddlewareAdapter[MyMessage](newLoggingMiddleware()))
+	middlewares = append(
+		middlewares,
+		newTimeTrackingMiddleware[MyMessage](),
+		consumer.MiddlewareAdapter[MyMessage](newLoggingMiddleware()),
+	)
 
 	defer cancel()
 
@@ -78,7 +80,7 @@ func produceMessages(sqsClient *sqs.Client, amount int) error {
 
 	str, err := json.Marshal(m)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to marshal MyMessage: %w", err)
 	}
 
 	for i := 0; i < amount; i++ {
@@ -87,7 +89,7 @@ func produceMessages(sqsClient *sqs.Client, amount int) error {
 			MessageBody: aws.String(string(str)),
 		})
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to send message: %w", err)
 		}
 	}
 
@@ -118,7 +120,7 @@ func newTimeTrackingMiddleware[T any]() consumer.Middleware[T] {
 			elapsed := time.Since(start)
 			fmt.Printf("Message processed in %s\n", elapsed)
 
-			return err
+			return fmt.Errorf("handler error: %w", err)
 		}
 	}
 }

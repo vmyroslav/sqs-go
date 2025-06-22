@@ -8,11 +8,10 @@ import (
 	"os/signal"
 	"time"
 
-	"github.com/vmyroslav/sqs-go/consumer"
-
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/sqs"
 	sqstypes "github.com/aws/aws-sdk-go-v2/service/sqs/types"
+	"github.com/vmyroslav/sqs-go/consumer"
 )
 
 var (
@@ -25,12 +24,12 @@ func main() {
 	var (
 		ctx, cancel = context.WithTimeout(context.Background(), timeOut)
 		logger      = slog.New(slog.NewJSONHandler(os.Stdout, nil))
-		handler     = consumer.HandlerFunc[MyMessage](func(ctx context.Context, msg MyMessage) error {
+		handler     = consumer.HandlerFunc[MyMessage](func(_ context.Context, msg MyMessage) error {
 			fmt.Printf("Received message with key %s and body %s\n", msg.Key, msg.Body)
 
 			return nil
 		})
-		adapter = consumer.MessageAdapterFunc[MyMessage](func(ctx context.Context, msg sqstypes.Message) (MyMessage, error) {
+		adapter = consumer.MessageAdapterFunc[MyMessage](func(_ context.Context, msg sqstypes.Message) (MyMessage, error) {
 			return MyMessage{Key: *msg.MessageId, Body: *msg.Body}, nil
 		})
 	)
@@ -73,7 +72,7 @@ func produceMessages(sqsClient *sqs.Client, amount int) error {
 			MessageBody: aws.String("Hello, World!"),
 		})
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to send message: %w", err)
 		}
 	}
 

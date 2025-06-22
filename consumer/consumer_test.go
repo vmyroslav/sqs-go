@@ -282,7 +282,7 @@ func TestSQSConsumer_Close_AllMessagesProcessed(t *testing.T) {
 	require.NoError(t, closeErr)
 
 	// Check that all messages were processed
-	assert.Equal(t, len(sqsClient.expectedMessages), len(processedMessages))
+	assert.Len(t, processedMessages, len(sqsClient.expectedMessages))
 }
 
 func TestSQSConsumer_Close_NotRunningConsumer(t *testing.T) {

@@ -23,6 +23,14 @@ tasks:
     desc: Update dependencies
     cmds:
       - go get -u -d ./...
+
+  fmt:
+    desc: Format Go files
+    cmds:
+      - go fmt ./...
+      - task: fumpt
+      - golangci-lint run --fix
+
   fumpt:
     desc: Gofumpt project files
     cmds:
