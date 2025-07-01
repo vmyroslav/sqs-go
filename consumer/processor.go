@@ -71,7 +71,6 @@ func (p *processorSQS[T]) Process(ctx context.Context, msgs <-chan sqstypes.Mess
 						// Message stays in the queue and will be processed again.
 						// It will be visible again after visibility timeout.
 						// If the message is not processed successfully after the maximum number of retries, it will be moved to the DLQ if configured.
-
 						if err = p.acknowledger.Reject(ctx, msg); err != nil {
 							p.logger.ErrorContext(ctx, "error rejecting message", "error", err)
 						}

@@ -3,7 +3,6 @@ package consumer
 import (
 	"context"
 	"fmt"
-	"io"
 	"log/slog"
 	"sync"
 	"time"
@@ -77,7 +76,7 @@ func NewSQSConsumer[T any](
 	logger *slog.Logger,
 ) *SQSConsumer[T] {
 	if logger == nil {
-		logger = slog.New(slog.NewTextHandler(io.Discard, nil))
+		logger = slog.New(slog.DiscardHandler)
 	}
 
 	c := &SQSConsumer[T]{

@@ -13,7 +13,6 @@ func NewIgnoreErrorsMiddleware[T any](l *slog.Logger) Middleware[T] {
 	return func(next HandlerFunc[T]) HandlerFunc[T] {
 		return func(ctx context.Context, msg T) error {
 			err := next.Handle(ctx, msg)
-
 			if err != nil && l != nil {
 				l.ErrorContext(ctx, fmt.Sprintf("failed to process message: %v", err))
 			}
@@ -44,6 +43,7 @@ func NewTimeLimitMiddleware[T any](timeout time.Duration) Middleware[T] {
 			defer cancel()
 
 			done := make(chan error)
+
 			go func() {
 				done <- next(ctx, msg)
 			}()

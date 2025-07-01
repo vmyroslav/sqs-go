@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io"
 	"log/slog"
 	"math/rand"
 	"sync/atomic"
@@ -37,7 +36,7 @@ func TestSqsPoller_Poll(t *testing.T) { // nolint: gocognit
 			sqsClient   = newMockSqsConnector(t)
 			ctx, cancel = context.WithCancel(context.Background())
 			messagesCh  = make(chan sqstypes.Message, 100)
-			logger      = slog.New(slog.NewTextHandler(io.Discard, nil))
+			logger      = slog.New(slog.DiscardHandler)
 			p           poller
 		)
 
@@ -58,6 +57,7 @@ func TestSqsPoller_Poll(t *testing.T) { // nolint: gocognit
 				MessageId: aws.String(messageID),
 				Body:      aws.String(messageBody),
 			}
+
 			expectedMessages[messageID] = msg
 			messageChan <- msg
 		}
@@ -130,7 +130,7 @@ func TestSqsPoller_Poll(t *testing.T) { // nolint: gocognit
 		var (
 			sqsClient   = newMockSqsConnector(t)
 			ctx, cancel = context.WithTimeout(context.Background(), 100*time.Millisecond)
-			logger      = slog.New(slog.NewTextHandler(io.Discard, nil))
+			logger      = slog.New(slog.DiscardHandler)
 		)
 
 		defer cancel()
@@ -188,7 +188,7 @@ func TestSqsPoller_Poll(t *testing.T) { // nolint: gocognit
 			messagesCh  = make(chan sqstypes.Message, 100)
 			errCh       = make(chan error, 1)
 			sqsClient   = newMockSqsConnector(t)
-			logger      = slog.New(slog.NewTextHandler(io.Discard, nil))
+			logger      = slog.New(slog.DiscardHandler)
 		)
 
 		cfg.ErrorNumberThreshold = 1
@@ -218,7 +218,7 @@ func TestSqsPoller_Poll(t *testing.T) { // nolint: gocognit
 			errCh       = make(chan error, 1)
 			errorCount  int32
 			sqsClient   = newMockSqsConnector(t)
-			logger      = slog.New(slog.NewTextHandler(io.Discard, nil))
+			logger      = slog.New(slog.DiscardHandler)
 		)
 
 		cfg.ErrorNumberThreshold = 5

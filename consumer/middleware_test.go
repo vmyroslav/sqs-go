@@ -105,7 +105,6 @@ func TestNewPanicRecoverMiddleware(t *testing.T) {
 			mwHandler := middleware(tt.handler)
 
 			err := mwHandler(context.Background(), "test message")
-
 			if (err != nil) != tt.wantErr {
 				t.Errorf("NewPanicRecoverMiddleware() error = %v, wantErr %v", err, tt.wantErr)
 			}
@@ -154,7 +153,6 @@ func TestNewTimeLimitMiddleware(t *testing.T) {
 			mwHandler := middleware(tt.handler)
 
 			err := mwHandler(context.Background(), "test message")
-
 			if (err != nil) != tt.wantErr {
 				t.Errorf("NewTimeLimitMiddleware() error = %v, wantErr %v", err, tt.wantErr)
 			}

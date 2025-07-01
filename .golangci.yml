@@ -1,6 +1,6 @@
 version: "2"
 run:
-  go: "1.24"
+  timeout: 5m
 linters:
   default: none
   enable:
@@ -43,7 +43,7 @@ linters:
     - unused
     - whitespace
     - wrapcheck
-    - wsl
+    - wsl_v5
   settings:
     errcheck:
       check-type-assertions: true
@@ -93,6 +93,8 @@ formatters:
   enable:
     - gci
     - gofmt
+    - goimports
+    - gofumpt
   exclusions:
     generated: lax
     paths:

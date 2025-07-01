@@ -51,6 +51,7 @@ func TestSQSConsumer_Consume_SuccessfullyProcessMessages(t *testing.T) {
 		handler = HandlerFunc[mockMessage](func(_ context.Context, msg mockMessage) error {
 			mu.Lock()
 			defer mu.Unlock()
+
 			receivedMessages = append(receivedMessages, msg)
 
 			return nil
@@ -100,6 +101,7 @@ func TestSQSConsumer_Consume_MiddlewareOrder(t *testing.T) {
 		handler = HandlerFunc[mockMessage](func(_ context.Context, _ mockMessage) error {
 			mu.Lock()
 			defer mu.Unlock()
+
 			middlewareCalls = append(middlewareCalls, "handler")
 
 			return nil
@@ -108,8 +110,11 @@ func TestSQSConsumer_Consume_MiddlewareOrder(t *testing.T) {
 		middleware1 = func(next HandlerFunc[mockMessage]) HandlerFunc[mockMessage] {
 			return func(ctx context.Context, msg mockMessage) error {
 				mu.Lock()
+
 				middlewareCalls = append(middlewareCalls, "middleware1")
+
 				mu.Unlock()
+
 				return next(ctx, msg)
 			}
 		}
@@ -117,8 +122,11 @@ func TestSQSConsumer_Consume_MiddlewareOrder(t *testing.T) {
 		middleware2 = func(next HandlerFunc[mockMessage]) HandlerFunc[mockMessage] {
 			return func(ctx context.Context, msg mockMessage) error {
 				mu.Lock()
+
 				middlewareCalls = append(middlewareCalls, "middleware2")
+
 				mu.Unlock()
+
 				return next(ctx, msg)
 			}
 		}
@@ -126,8 +134,11 @@ func TestSQSConsumer_Consume_MiddlewareOrder(t *testing.T) {
 		middleware3 = func(next HandlerFunc[mockMessage]) HandlerFunc[mockMessage] {
 			return func(ctx context.Context, msg mockMessage) error {
 				mu.Lock()
+
 				middlewareCalls = append(middlewareCalls, "middleware3")
+
 				mu.Unlock()
+
 				return next(ctx, msg)
 			}
 		}
@@ -135,8 +146,11 @@ func TestSQSConsumer_Consume_MiddlewareOrder(t *testing.T) {
 		middleware4 = func(next HandlerFunc[mockMessage]) HandlerFunc[mockMessage] {
 			return func(ctx context.Context, msg mockMessage) error {
 				res := next(ctx, msg)
+
 				mu.Lock()
+
 				middlewareCalls = append(middlewareCalls, "middleware4")
+
 				mu.Unlock()
 
 				return res
@@ -253,6 +267,7 @@ func TestSQSConsumer_Close_AllMessagesProcessed(t *testing.T) {
 
 		handler = HandlerFunc[sqstypes.Message](func(_ context.Context, msg sqstypes.Message) error {
 			time.Sleep(10 * time.Millisecond)
+
 			processedMessages <- msg
 
 			return nil

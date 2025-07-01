@@ -3,7 +3,6 @@ package consumer
 import (
 	"context"
 	"fmt"
-	"io"
 	"log/slog"
 	"os"
 	"sync"
@@ -162,7 +161,7 @@ func Test_Process_HandlingAckErrors(t *testing.T) {
 		pCfg = processorConfig{
 			WorkerPoolSize: 2,
 		}
-		logger  = slog.New(slog.NewJSONHandler(io.Discard, nil))
+		logger  = slog.New(slog.DiscardHandler)
 		msgBody = "original message"
 
 		handler = HandlerFunc[sqstypes.Message](func(_ context.Context, _ sqstypes.Message) error {
@@ -238,7 +237,7 @@ func Test_Process_WhenHandlerReturnsError_MessageRejected(t *testing.T) {
 		pCfg = processorConfig{
 			WorkerPoolSize: 1,
 		}
-		logger       = slog.New(slog.NewJSONHandler(io.Discard, nil))
+		logger       = slog.New(slog.DiscardHandler)
 		msgBody      = "test message"
 		rejectCalled = make(chan bool, 1)
 	)

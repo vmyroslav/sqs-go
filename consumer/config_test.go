@@ -195,7 +195,6 @@ func TestNewInvalidConfig(t *testing.T) {
 		0,
 		0,
 	)
-
 	if err == nil {
 		t.Errorf("NewConfig() error = %v, wantErr %v", err, true)
 	}
