@@ -56,9 +56,9 @@ func main() {
 	adapter := consumer.NewJSONMessageAdapter[MyMessage]()
 	
 	// Configure consumer
-	config := consumer.NewDefaultConfig(queueURL)
+	cfg := consumer.NewDefaultConfig(queueURL)
 	sqsConsumer := consumer.NewSQSConsumer[MyMessage](
-		config, 
+		cfg, 
 		sqsClient, 
 		adapter, 
 		nil,  // middleware
@@ -72,7 +72,7 @@ func main() {
 	})
 	
 	// Start consuming
-	if err := sqsConsumer.Consume(ctx, queueURL, handler); err != nil {
+	if err = sqsConsumer.Consume(ctx, queueURL, handler); err != nil {
 		log.Fatal(err)
 	}
 }
@@ -126,10 +126,21 @@ Implement the `MessageAdapter` interface for custom message formats:
 ```go
 type CustomAdapter struct{}
 
-func (a CustomAdapter) Adapt(ctx context.Context, msg sqstypes.Message) (MyType, error) {
+func (a CustomAdapter) Transform(ctx context.Context, msg sqstypes.Message) (MyType, error) {
     // Custom message transformation logic
-    return MyType{}, nil
+    return MyType{
+        ID:   *msg.MessageId,
+        Body: *msg.Body,
+    }, nil
 }
+
+// Or use MessageAdapterFunc for simple cases
+adapter := consumer.MessageAdapterFunc[MyType](func(ctx context.Context, msg sqstypes.Message) (MyType, error) {
+    return MyType{
+        ID:   *msg.MessageId, 
+        Body: *msg.Body,
+    }, nil
+})
 ```
 
 ## Middleware
@@ -163,46 +174,6 @@ sqsConsumer := consumer.NewSQSConsumer[MyMessage](
 ```
 
 ## Advanced Examples
-
-### With Middleware and Custom Configuration
-
-```go
-func main() {
-    // Setup
-    ctx := context.Background()
-    logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
-    
-    // Custom configuration
-    config := consumer.Config{
-        QueueURL:                queueURL,
-        ProcessorWorkerPoolSize: 20,
-        PollerWorkerPoolSize:    5,
-        MaxNumberOfMessages:     10,
-        WaitTimeSeconds:         20,
-        VisibilityTimeout:       60,
-        ErrorNumberThreshold:    3,
-    }
-    
-    // Middleware stack
-    middlewares := []consumer.Middleware[MyMessage]{
-        loggingMiddleware[MyMessage](logger),
-        retryMiddleware[MyMessage](3),
-        metricsMiddleware[MyMessage](),
-    }
-    
-    sqsConsumer := consumer.NewSQSConsumer[MyMessage](
-        config, sqsClient, adapter, middlewares, logger,
-    )
-    
-    // Graceful shutdown
-    ctx, stop := signal.NotifyContext(ctx, os.Interrupt, syscall.SIGTERM)
-    defer stop()
-    
-    if err := sqsConsumer.Consume(ctx, queueURL, handler); err != nil {
-        logger.Error("Consumer error", "error", err)
-    }
-}
-```
 
 For more examples, see the `/examples` directory.
 
