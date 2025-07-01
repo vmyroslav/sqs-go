@@ -1,5 +1,7 @@
 /.DS_Store
 /.idea/
+CLAUDE.md
+/.claude/
 
 /bin/*
 /.env
@@ -13,3 +15,10 @@
 /examples/tmp/
 /coverage.out
 /packages.out
+
+# Tests and artifacts
+profile.cov
+
+# Development files
+release_notes.md
+/Taskfile.yml

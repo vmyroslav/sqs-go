@@ -1,0 +1,90 @@
+name: Prepare Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'The semantic version for the new release (e.g., v1.2.3)'
+        required: true
+        type: string
+
+jobs:
+  prepare-release:
+    name: Prepare Release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Install Task
+        uses: arduino/setup-task@v2
+        with:
+          version: 3.x
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Get CI Context
+        id: ci_context
+        run: |
+          echo "commit_sha=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+          echo "branch_name=${{ github.ref_name }}" >> $GITHUB_OUTPUT
+
+      - name: Lint
+        uses: golangci/golangci-lint-action@v8
+
+      - name: Tests
+        run: task test
+
+      - name: Prepare Release Changelog
+        run: task ci:prepare-release VERSION=${{ github.event.inputs.version }}
+
+      - name: Commit and Push
+        id: commit_changelog
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          
+          git add CHANGELOG.md
+          
+          if git diff --staged --quiet; then
+            echo "No changes to commit in CHANGELOG.md."
+            echo "commit_sha=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
+          else
+            git commit -m "chore(release): Update changelog for v${{ github.event.inputs.version }}"
+            NEW_COMMIT_SHA=$(git rev-parse HEAD)
+            echo "commit_sha=$NEW_COMMIT_SHA" >> $GITHUB_OUTPUT
+          
+            echo "Tagging commit $NEW_COMMIT_SHA"
+            git tag "v${{ github.event.inputs.version }}" "$NEW_COMMIT_SHA"
+          
+            echo "Pushing commit and tag to origin"
+            git push origin ${{ github.ref_name }}
+            git push origin "v${{ github.event.inputs.version }}"
+          fi
+
+      - name: Create Draft Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION=${{ github.event.inputs.version }}
+          COMMIT_SHA=${{ steps.commit_changelog.outputs.commit_sha }}
+          
+          # The release_notes.md file is available directly from the workspace
+          cat release_notes.md > final_body.md
+          echo -e "\n\n---\n" >> final_body.md
+          echo "_**Branch:** \`${{ github.ref_name }}\`_" >> final_body.md
+          echo "_**Commit:** \`$(echo $COMMIT_SHA | cut -c1-7)\`_" >> final_body.md
+
+          gh release create v$VERSION \
+            --title "v$VERSION" \
+            --notes-file final_body.md \
+            --draft

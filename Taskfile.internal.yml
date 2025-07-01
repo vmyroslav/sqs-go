@@ -1,0 +1,6 @@
+version: '3'
+
+vars:
+  RELEASE_NOTES_FILE: release_notes.md
+
+tasks:

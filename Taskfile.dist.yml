@@ -1,0 +1,65 @@
+version: '3'
+
+includes:
+  internal:
+    taskfile: ./Taskfile.internal.yml
+    internal: true
+  ci:
+    taskfile: ./Taskfile.ci.yml
+    internal: false
+
+tasks:
+  default:
+    desc: Show all available tasks
+    cmds:
+      - task --list-all
+  lint:
+    desc: Run linter checks
+    cmds:
+      - golangci-lint run -c .golangci.yml
+  test:
+    cmds:
+      - go list ./consumer/... | grep -v /mock_ > packages.out
+      - go test -gcflags=-l -covermode=atomic -coverprofile=coverage.tmp -race $(cat packages.out)
+      - cat coverage.tmp | grep -v mock_ > coverage.out
+      - rm coverage.tmp
+  fmt:
+    desc: Format project files
+    cmds:
+      - find . -name '*.go' -type f -exec gofumpt -w {} +
+      - golangci-lint run --fix
+  clean:
+    desc: Clean up and format code
+    cmds:
+      - defer: {task: fmt}
+      - go mod tidy
+  update-deps:
+    desc: Update Go dependencies
+    cmds:
+      - go get -u ./...
+
+# #################################################
+# CI/CD Tasks
+# #################################################
+  ci:prepare-release:
+    desc: Prepares release
+    summary: |
+      Usage: task prepare-release VERSION=1.1.0
+      1. Runs linters and tests.
+      2. Extracts release notes from CHANGELOG.md.
+      3. Updates CHANGELOG.md with the new version tag.
+    vars:
+      VERSION: '{{.VERSION}}'
+    preconditions:
+      - sh: 'test -n "{{.VERSION}}"'
+        msg: "VERSION variable is required. Usage: task ci:prepare-release VERSION=1.2.3"
+      - sh: 'echo "{{.VERSION}}" | grep -qE "^[0-9]+\.[0-9]+\.[0-9]+$"'
+        msg: "Version format must be 'X.Y.Z'. Passed: {{.VERSION}}"
+      - sh: "test -n \"$(awk '/^## \\[Unreleased\\]/{flag=1; next} /^## \\[/{flag=0} flag' CHANGELOG.md)\""
+        msg: "❌ The [Unreleased] section in CHANGELOG.md is empty. Nothing to release."
+    cmds:
+      - task: ci:check-version-bump
+        vars: { VERSION: "{{.VERSION}}" }
+      - task: ci:changelog:extract
+      - task: ci:changelog:update
+        vars: { VERSION: "v{{.VERSION}}" }

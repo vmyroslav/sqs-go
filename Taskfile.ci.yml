@@ -1,0 +1,73 @@
+version: '3'
+
+tasks:
+  changelog:extract:
+    desc: Extract release notes from CHANGELOG.md
+    internal: true
+    silent: true
+    cmds:
+      - |
+        awk '/^## \[Unreleased\]/{flag=1; next} /^## \[/{flag=0} flag' CHANGELOG.md > {{.RELEASE_NOTES_FILE}}
+        if [ ! -s {{.RELEASE_NOTES_FILE}} ]; then
+          echo "Error: No changes found under '## [Unreleased]' in CHANGELOG.md."
+          exit 1
+        fi
+        echo "   -> Notes saved to {{.RELEASE_NOTES_FILE}}"
+    generates:
+      - "{{.RELEASE_NOTES_FILE}}"
+
+  changelog:update:
+    desc: Update CHANGELOG.md with new version
+    internal: true
+    silent: true
+    preconditions:
+      - sh: 'test -n "{{.VERSION}}"'
+        msg: "VERSION variable is not set for internal:changelog:update task."
+    cmds:
+      - |
+        RELEASE_DATE=$(date +'%Y-%m-%d')
+        INSERT_TEXT="## [Unreleased]\n\n## [{{.VERSION}}] - $RELEASE_DATE"
+        sed -i "s@^## \[Unreleased\]@$INSERT_TEXT@" CHANGELOG.md
+        echo "   -> CHANGELOG.md updated."
+
+  check-version-bump:
+    desc: Validate semantic version bump
+    internal: true
+    silent: true
+    vars:
+      VERSION: "{{.VERSION}}"
+    preconditions:
+      - sh: 'test -n "{{.VERSION}}"'
+        msg: "VERSION is required for the version check task."
+    cmds:
+      - |
+        LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+        
+        # If no previous tag, any version is valid (for the very first release)
+        if [ -z "$LATEST_TAG" ]; then 
+          echo "   -> No previous git tag found. Skipping check."
+          exit 0
+        fi
+        
+        # Construct the new tag with a 'v' prefix for comparison.
+        NEW_TAG="v{{.VERSION}}"
+        
+        # Remove 'v' prefix for arithmetic
+        OLD_VER=${LATEST_TAG#v}
+        NEW_VER=${NEW_TAG#v}
+        
+        # Split into components.
+        IFS='.' read -r old_major old_minor old_patch <<< "$OLD_VER"
+        IFS='.' read -r new_major new_minor new_patch <<< "$NEW_VER"
+        
+        # Check for valid MAJOR, MINOR, or PATCH bumps.
+        if ( [ "$new_major" -eq "$((old_major + 1))" ] && [ "$new_minor" -eq 0 ] && [ "$new_patch" -eq 0 ] ) || \
+           ( [ "$new_major" -eq "$old_major" ] && [ "$new_minor" -eq "$((old_minor + 1))" ] && [ "$new_patch" -eq 0 ] ) || \
+           ( [ "$new_major" -eq "$old_major" ] && [ "$new_minor" -eq "$old_minor" ] && [ "$new_patch" -eq "$((old_patch + 1))" ] ); then
+          echo "   -> ✅ Version $NEW_TAG is a valid bump from git tag $LATEST_TAG."
+          exit 0
+        fi
+        
+        # If none of the conditions were met, it's an invalid bump.
+        echo "❌ Version '$NEW_TAG' is not a valid semantic bump from latest git tag '$LATEST_TAG'."
+        exit 1
