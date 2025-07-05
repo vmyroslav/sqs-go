@@ -9,6 +9,7 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/service/sqs"
 	sqstypes "github.com/aws/aws-sdk-go-v2/service/sqs/types"
+	"github.com/vmyroslav/sqs-go/consumer/observability"
 )
 
 // Handler is a generic interface for message handlers.
@@ -62,8 +63,11 @@ type SQSConsumer[T any] struct { // nolint:govet
 	stopSignalCh chan struct{}
 	stoppedCh    chan struct{}
 	isRunning    bool
+	isClosing    bool
 
-	logger *slog.Logger
+	logger  *slog.Logger
+	tracer  observability.SQSTracer
+	metrics observability.SQSMetrics
 
 	mu sync.RWMutex
 }
@@ -79,6 +83,23 @@ func NewSQSConsumer[T any](
 		logger = slog.New(slog.DiscardHandler)
 	}
 
+	if cfg.Observability == nil {
+		cfg.Observability = observability.NewConfig() // disabled by default
+	}
+
+	var (
+		tracer  = observability.NewTracer(cfg.Observability)
+		metrics = observability.NewMetrics(cfg.Observability)
+
+		obsMessageAdapter = newObservableMessageAdapter[T](
+			messageAdapter, tracer, metrics, cfg.QueueURL,
+		)
+
+		obsAcknowledger = newObservableAcknowledger(
+			newSyncAcknowledger(cfg.QueueURL, sqsClient), tracer, metrics, cfg.QueueURL,
+		)
+	)
+
 	c := &SQSConsumer[T]{
 		cfg: cfg,
 		poller: newSqsPoller(pollerConfig{
@@ -87,17 +108,24 @@ func NewSQSConsumer[T any](
 			VisibilityTimeout:    cfg.VisibilityTimeout,
 			WorkerPoolSize:       cfg.PollerWorkerPoolSize,
 			ErrorNumberThreshold: cfg.ErrorNumberThreshold,
-		}, sqsClient, logger),
+		}, sqsClient, logger, tracer, metrics),
 		processor: newProcessorSQS[T](
-			processorConfig{WorkerPoolSize: cfg.ProcessorWorkerPoolSize},
-			messageAdapter,
-			newSyncAcknowledger(cfg.QueueURL, sqsClient),
+			processorConfig{
+				WorkerPoolSize: cfg.ProcessorWorkerPoolSize,
+				QueueURL:       cfg.QueueURL,
+			},
+			obsMessageAdapter,
+			obsAcknowledger,
 			logger,
+			tracer,
+			cfg.Observability.Propagator(),
 		),
 		middlewares:  middlewares,
 		stopSignalCh: make(chan struct{}, 1),
 		stoppedCh:    make(chan struct{}, 1),
 		logger:       logger,
+		tracer:       tracer,
+		metrics:      metrics,
 	}
 
 	return c
@@ -125,16 +153,43 @@ func (c *SQSConsumer[T]) Consume(ctx context.Context, queueURL string, messageHa
 
 		c.mu.Lock()
 		c.isRunning = false
+		c.isClosing = false
 		c.mu.Unlock()
+
+		// record final metrics
+		c.metrics.Gauge(ctx, observability.MetricActiveWorkers, 0,
+			observability.WithQueueURLMetric(queueURL),
+			observability.WithProcessType("poller"),
+		)
+		c.metrics.Gauge(ctx, observability.MetricActiveWorkers, 0,
+			observability.WithQueueURLMetric(queueURL),
+			observability.WithProcessType("processor"),
+		)
 	}()
 
-	if c.IsRunning() {
+	c.mu.Lock()
+
+	if c.isRunning {
+		c.mu.Unlock()
+
 		return fmt.Errorf("consumer is already running")
 	}
 
-	c.mu.Lock()
 	c.isRunning = true
 	c.mu.Unlock()
+
+	// record initial metrics
+	c.metrics.Gauge(ctx, observability.MetricActiveWorkers, int64(c.cfg.PollerWorkerPoolSize),
+		observability.WithQueueURLMetric(queueURL),
+		observability.WithProcessType("poller"),
+	)
+	c.metrics.Gauge(ctx, observability.MetricActiveWorkers, int64(c.cfg.ProcessorWorkerPoolSize),
+		observability.WithQueueURLMetric(queueURL),
+		observability.WithProcessType("processor"),
+	)
+	c.metrics.Gauge(ctx, observability.MetricBufferSize, int64(bufferSize),
+		observability.WithQueueURLMetric(queueURL),
+	)
 
 	// apply middlewares
 	for i := len(c.middlewares) - 1; i >= 0; i-- {
@@ -153,14 +208,14 @@ func (c *SQSConsumer[T]) Consume(ctx context.Context, queueURL string, messageHa
 		c.logger.InfoContext(ctx, "stop signal received. Shutting down consumer.")
 		cancelPoller()
 
-		// Wait for the poller to finish
+		// wait for the poller to finish
 		if err := <-pollerErrCh; err != nil {
 			c.logger.ErrorContext(ctx, "poller error", "error", err)
 
 			return err
 		}
 
-		// Wait for the processor to finish consuming the messages in the buffer
+		// wait for the processor to finish consuming the messages in the buffer
 		if err := <-processErrCh; err != nil {
 			c.logger.ErrorContext(ctx, "processing error", "error", err)
 
@@ -186,13 +241,21 @@ func (c *SQSConsumer[T]) Consume(ctx context.Context, queueURL string, messageHa
 }
 
 func (c *SQSConsumer[T]) Close() error {
-	if !c.IsRunning() {
+	c.mu.Lock()
+
+	if !c.isRunning || c.isClosing {
+		c.mu.Unlock()
 		return nil
 	}
+
+	// announce our intent to close
+	c.isClosing = true
 
 	c.logger.Debug("closing SQS consumer")
 
 	c.stopSignalCh <- struct{}{}
+
+	c.mu.Unlock()
 
 	select {
 	case <-c.stoppedCh:

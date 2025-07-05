@@ -7,16 +7,22 @@ import (
 	"sync"
 
 	sqstypes "github.com/aws/aws-sdk-go-v2/service/sqs/types"
+	"github.com/vmyroslav/sqs-go/consumer/observability"
+	"go.opentelemetry.io/otel/propagation"
 )
 
 type processorConfig struct {
+	QueueURL       string
 	WorkerPoolSize int32
 }
+
 type processorSQS[T any] struct { // nolint:govet
 	cfg            processorConfig
 	messageAdapter MessageAdapter[T]
 	acknowledger   acknowledger
 	logger         *slog.Logger
+	tracer         observability.SQSTracer
+	propagator     propagation.TextMapPropagator
 }
 
 func newProcessorSQS[T any](
@@ -24,16 +30,20 @@ func newProcessorSQS[T any](
 	messageAdapter MessageAdapter[T],
 	acknowledger acknowledger,
 	logger *slog.Logger,
+	tracer observability.SQSTracer,
+	propagator propagation.TextMapPropagator,
 ) *processorSQS[T] {
 	return &processorSQS[T]{
 		cfg:            cfg,
 		messageAdapter: messageAdapter,
 		acknowledger:   acknowledger,
 		logger:         logger,
+		tracer:         tracer,
+		propagator:     propagator,
 	}
 }
 
-func (p *processorSQS[T]) Process(ctx context.Context, msgs <-chan sqstypes.Message, handler Handler[T]) error { // nolint: cyclop
+func (p *processorSQS[T]) Process(ctx context.Context, msgs <-chan sqstypes.Message, handler Handler[T]) error {
 	var (
 		poolSize = int(p.cfg.WorkerPoolSize)
 		wg       sync.WaitGroup
@@ -56,31 +66,10 @@ func (p *processorSQS[T]) Process(ctx context.Context, msgs <-chan sqstypes.Mess
 				case msg, ok := <-msgs:
 					if !ok {
 						p.logger.DebugContext(ctx, "message channel closed")
-
 						return
 					}
 
-					message, err := p.messageAdapter.Transform(ctx, msg)
-					if err != nil {
-						p.logger.ErrorContext(ctx, "error transforming message", "error", err)
-
-						continue
-					}
-
-					if err = handler.Handle(ctx, message); err != nil { //nolint:wsl
-						// Message stays in the queue and will be processed again.
-						// It will be visible again after visibility timeout.
-						// If the message is not processed successfully after the maximum number of retries, it will be moved to the DLQ if configured.
-						if err = p.acknowledger.Reject(ctx, msg); err != nil {
-							p.logger.ErrorContext(ctx, "error rejecting message", "error", err)
-						}
-
-						continue
-					}
-
-					if err = p.acknowledger.Ack(ctx, msg); err != nil {
-						p.logger.ErrorContext(ctx, "error acknowledging message", "error", err)
-					}
+					p.processMessage(ctx, msg, handler)
 				}
 			}
 		}()
@@ -89,4 +78,39 @@ func (p *processorSQS[T]) Process(ctx context.Context, msgs <-chan sqstypes.Mess
 	wg.Wait()
 
 	return nil
+}
+
+// processMessage handles the complete processing lifecycle for a single message
+func (p *processorSQS[T]) processMessage(ctx context.Context, msg sqstypes.Message, handler Handler[T]) {
+	traceCtx := observability.ExtractTraceContext(ctx, msg, p.propagator)
+
+	msgCtx, msgSpan := p.tracer.Span(traceCtx, observability.SpanNameProcess,
+		observability.WithConsumerSpanKind(),
+		observability.WithQueueURL(p.cfg.QueueURL),
+		observability.WithMessageID(msg.MessageId),
+		observability.WithAction(observability.ActionProcess),
+	)
+	defer msgSpan.End()
+
+	message, err := p.messageAdapter.Transform(msgCtx, msg)
+	if err != nil {
+		p.logger.ErrorContext(ctx, "error transforming message", "error", err)
+
+		return
+	}
+
+	if err = handler.Handle(msgCtx, message); err != nil {
+		// Message stays in the queue and will be processed again.
+		// It will be visible again after visibility timeout.
+		// If the message is not processed successfully after the maximum number of retries, it will be moved to the DLQ if configured.
+		if rejErr := p.acknowledger.Reject(msgCtx, msg); rejErr != nil {
+			p.logger.ErrorContext(ctx, "error rejecting message", "error", rejErr)
+		}
+
+		return
+	}
+
+	if ackErr := p.acknowledger.Ack(msgCtx, msg); ackErr != nil {
+		p.logger.ErrorContext(ctx, "error acknowledging message", "error", ackErr)
+	}
 }

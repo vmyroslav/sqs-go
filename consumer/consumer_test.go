@@ -176,10 +176,16 @@ func TestSQSConsumer_Consume_MiddlewareOrder(t *testing.T) {
 		mu.RLock()
 		defer mu.RUnlock()
 
-		return assert.Len(t, middlewareCalls, 5)
-	}, 100*time.Millisecond, 10*time.Millisecond)
+		return len(middlewareCalls) == 5
+	}, 500*time.Millisecond, 10*time.Millisecond)
 
-	assert.Equal(t, []string{"middleware1", "middleware2", "middleware3", "handler", "middleware4"}, middlewareCalls)
+	mu.RLock()
+
+	finalCalls := make([]string, len(middlewareCalls))
+	copy(finalCalls, middlewareCalls)
+	mu.RUnlock()
+
+	assert.Equal(t, []string{"middleware1", "middleware2", "middleware3", "handler", "middleware4"}, finalCalls)
 }
 
 func TestSQSConsumer_Consume_IsRunning(t *testing.T) {

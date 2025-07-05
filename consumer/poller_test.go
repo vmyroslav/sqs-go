@@ -16,6 +16,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+	"github.com/vmyroslav/sqs-go/consumer/observability"
 )
 
 func TestSqsPoller_Poll(t *testing.T) { // nolint: gocognit
@@ -88,7 +89,11 @@ func TestSqsPoller_Poll(t *testing.T) { // nolint: gocognit
 			mock.Anything,
 		).Return(mockMessagesOutputFunc(), nil)
 
-		p = newSqsPoller(cfg, sqsClient, logger)
+		obsCfg := observability.NewConfig() // no options means disabled by default
+		tracer := observability.NewTracer(obsCfg)
+		metrics := observability.NewMetrics(obsCfg)
+
+		p = newSqsPoller(cfg, sqsClient, logger, tracer, metrics)
 
 		go func() {
 			err := p.Poll(ctx, queueURL, messagesCh)
@@ -151,8 +156,12 @@ func TestSqsPoller_Poll(t *testing.T) { // nolint: gocognit
 			},
 		}, nil)
 
+		obsCfg := observability.NewConfig() // no options means disabled by default
+		tracer := observability.NewTracer(obsCfg)
+		metrics := observability.NewMetrics(obsCfg)
+
 		var (
-			p     = newSqsPoller(cfg, sqsClient, logger)
+			p     = newSqsPoller(cfg, sqsClient, logger, tracer, metrics)
 			ch    = make(chan sqstypes.Message, 100)
 			errCh = make(chan error, 1)
 		)
@@ -191,8 +200,13 @@ func TestSqsPoller_Poll(t *testing.T) { // nolint: gocognit
 			logger      = slog.New(slog.DiscardHandler)
 		)
 
-		cfg.ErrorNumberThreshold = 1
-		p := newSqsPoller(cfg, sqsClient, logger)
+		testCfg := cfg
+		testCfg.ErrorNumberThreshold = 1
+		obsCfg := observability.NewConfig() // no options means disabled by default
+		tracer := observability.NewTracer(obsCfg)
+		metrics := observability.NewMetrics(obsCfg)
+
+		p := newSqsPoller(testCfg, sqsClient, logger, tracer, metrics)
 
 		defer cancel()
 
@@ -221,8 +235,13 @@ func TestSqsPoller_Poll(t *testing.T) { // nolint: gocognit
 			logger      = slog.New(slog.DiscardHandler)
 		)
 
-		cfg.ErrorNumberThreshold = 5
-		p := newSqsPoller(cfg, sqsClient, logger)
+		testCfg := cfg
+		testCfg.ErrorNumberThreshold = 5
+		obsCfg := observability.NewConfig() // no options means disabled by default
+		tracer := observability.NewTracer(obsCfg)
+		metrics := observability.NewMetrics(obsCfg)
+
+		p := newSqsPoller(testCfg, sqsClient, logger, tracer, metrics)
 
 		defer cancel()
 

@@ -3,6 +3,19 @@ package consumer
 import (
 	"fmt"
 	"net/url"
+
+	"github.com/vmyroslav/sqs-go/consumer/observability"
+)
+
+// Default values for consumer configuration
+const (
+	DefaultProcessorWorkerPoolSize = 10
+	DefaultPollerWorkerPoolSize    = 2
+	DefaultMaxNumberOfMessages     = 10
+	DefaultWaitTimeSeconds         = 1
+	DefaultVisibilityTimeout       = 30
+	DefaultErrorNumberThreshold    = -1
+	DefaultGracefulShutdownTimeout = 30
 )
 
 type WrongConfigError struct {
@@ -14,65 +27,109 @@ func (e *WrongConfigError) Error() string {
 }
 
 type Config struct {
-	QueueURL string
-
-	// processor configuration
+	Observability           *observability.Config
+	QueueURL                string
 	ProcessorWorkerPoolSize int32
-
-	// poller configuration
-	PollerWorkerPoolSize int32
-	// MaxNumberOfMessages is the maximum number of messages to receive in a single poll request: 1-10
-	MaxNumberOfMessages int32
-	// WaitTimeSeconds is the duration (0 to 20 seconds) for which the call waits for a message to arrive
-	WaitTimeSeconds int32
-	// VisibilityTimeout is the duration (0 to 12 hours) that the received messages are hidden from subsequent retrieve requests
-	VisibilityTimeout int32
-	// MaxNumberOfRetries is the maximum number of retries for a message polling. -1 means infinite retries
-	ErrorNumberThreshold int32
-	// GracefulShutdownTimeout is the timeout for graceful shutdown.
+	PollerWorkerPoolSize    int32
+	MaxNumberOfMessages     int32
+	WaitTimeSeconds         int32
+	VisibilityTimeout       int32
+	ErrorNumberThreshold    int32
 	GracefulShutdownTimeout int32
 }
 
-func NewConfig(
-	queueURL string,
-	handlerWorkerPoolSize int32,
-	pollerWorkerPoolSize int32,
-	maxNumberOfMessages int32,
-	waitTimeSeconds int32,
-	visibilityTimeout int32,
-	errorNumberThreshold int32,
-	gracefulShutdownTimeout int32,
-) (*Config, error) {
-	config := &Config{
+// Option is an interface that configures a consumer Config
+type Option interface {
+	apply(*Config)
+}
+
+// option is a function that configures a consumer Config
+type option func(*Config)
+
+func (o option) apply(c *Config) {
+	o(c)
+}
+
+// NewConfig creates a new Config with the provided queue URL and optional configuration
+func NewConfig(queueURL string, opts ...Option) (*Config, error) {
+	c := &Config{
 		QueueURL:                queueURL,
-		ProcessorWorkerPoolSize: handlerWorkerPoolSize,
-		PollerWorkerPoolSize:    pollerWorkerPoolSize,
-		MaxNumberOfMessages:     maxNumberOfMessages,
-		WaitTimeSeconds:         waitTimeSeconds,
-		VisibilityTimeout:       visibilityTimeout,
-		ErrorNumberThreshold:    errorNumberThreshold,
-		GracefulShutdownTimeout: gracefulShutdownTimeout,
+		ProcessorWorkerPoolSize: DefaultProcessorWorkerPoolSize,
+		PollerWorkerPoolSize:    DefaultPollerWorkerPoolSize,
+		MaxNumberOfMessages:     DefaultMaxNumberOfMessages,
+		WaitTimeSeconds:         DefaultWaitTimeSeconds,
+		VisibilityTimeout:       DefaultVisibilityTimeout,
+		ErrorNumberThreshold:    DefaultErrorNumberThreshold,
+		GracefulShutdownTimeout: DefaultGracefulShutdownTimeout,
+		Observability:           observability.NewConfig(), // disabled by default
 	}
 
-	_, err := config.IsValid()
+	for _, opt := range opts {
+		opt.apply(c)
+	}
+
+	_, err := c.IsValid()
 	if err != nil {
 		return nil, err
 	}
 
-	return config, nil
+	return c, nil
 }
 
-// NewDefaultConfig creates a new Config with default values
-func NewDefaultConfig(queueURL string) *Config {
-	return &Config{
-		QueueURL:                queueURL,
-		ProcessorWorkerPoolSize: 10,
-		PollerWorkerPoolSize:    2,
-		MaxNumberOfMessages:     10,
-		WaitTimeSeconds:         1,
-		VisibilityTimeout:       30,
-		ErrorNumberThreshold:    -1,
-	}
+// WithProcessorWorkerPoolSize sets the processor worker pool size
+func WithProcessorWorkerPoolSize(size int32) Option {
+	return option(func(c *Config) {
+		c.ProcessorWorkerPoolSize = size
+	})
+}
+
+// WithPollerWorkerPoolSize sets the poller worker pool size
+func WithPollerWorkerPoolSize(size int32) Option {
+	return option(func(c *Config) {
+		c.PollerWorkerPoolSize = size
+	})
+}
+
+// WithMaxNumberOfMessages sets the maximum number of messages to receive in a single poll
+func WithMaxNumberOfMessages(maxMessages int32) Option {
+	return option(func(c *Config) {
+		c.MaxNumberOfMessages = maxMessages
+	})
+}
+
+// WithWaitTimeSeconds sets the wait time in seconds for long polling
+func WithWaitTimeSeconds(wait int32) Option {
+	return option(func(c *Config) {
+		c.WaitTimeSeconds = wait
+	})
+}
+
+// WithVisibilityTimeout sets the visibility timeout for messages
+func WithVisibilityTimeout(timeout int32) Option {
+	return option(func(c *Config) {
+		c.VisibilityTimeout = timeout
+	})
+}
+
+// WithErrorNumberThreshold sets the error number threshold
+func WithErrorNumberThreshold(threshold int32) Option {
+	return option(func(c *Config) {
+		c.ErrorNumberThreshold = threshold
+	})
+}
+
+// WithGracefulShutdownTimeout sets the graceful shutdown timeout
+func WithGracefulShutdownTimeout(timeout int32) Option {
+	return option(func(c *Config) {
+		c.GracefulShutdownTimeout = timeout
+	})
+}
+
+// WithObservability sets the observability configuration
+func WithObservability(obs *observability.Config) Option {
+	return option(func(c *Config) {
+		c.Observability = obs
+	})
 }
 
 func (c *Config) IsValid() (bool, error) { // nolint: cyclop

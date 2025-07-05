@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Observability Support** - Complete OpenTelemetry integration with distributed tracing and metrics
+  - Distributed tracing support with context propagation from SQS message attributes
+  - Metrics collection including:
+    - Message processing counters and histograms
+    - Active worker gauges for poller and processor
+    - Buffer size and polling request metrics
+    - Processing duration measurements
+  - Observable decorators for all core components (adapter, acknowledger, poller, processor)
+  - Automatic span creation for message lifecycle (poll, process, transform, ack/reject)
+
 ## [v0.2.0] - 2025-07-01
 
 ### Added
