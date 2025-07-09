@@ -166,11 +166,8 @@ Traces are automatically created for:
 - **Message transformation**: Adapter operations
 - **Acknowledgment**: Message ack/reject operations
 
-Context propagation works automatically with SQS message attributes.
-
-### Disabled by Default
-
-Observability is disabled by default for. When disabled, noop providers are used with minimal performance impact.
+Context propagation works automatically with SQS message attributes. \
+**Observability is disabled by default**. When disabled, noop providers are used with minimal performance impact.
 
 ## Message Adapters
 

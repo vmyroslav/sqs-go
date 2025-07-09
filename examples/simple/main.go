@@ -6,7 +6,7 @@ import (
 	"log/slog"
 	"os"
 	"os/signal"
-	"time"
+	"syscall"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/sqs"
@@ -15,16 +15,15 @@ import (
 )
 
 var (
-	queueURL        = " http://sqs.eu-central-1.localhost:4566/000000000000/sqs-test-queue"
+	queueURL        = "http://localhost:4566/000000000000/sqs-test-queue"
 	awsBaseEndpoint = "http://localhost:4566"
-	timeOut         = 5 * time.Second
 )
 
 func main() {
 	var (
-		ctx, cancel = context.WithTimeout(context.Background(), timeOut)
-		logger      = slog.New(slog.NewJSONHandler(os.Stdout, nil))
-		handler     = consumer.HandlerFunc[MyMessage](func(_ context.Context, msg MyMessage) error {
+		ctx     = context.Background()
+		logger  = slog.New(slog.NewJSONHandler(os.Stdout, nil))
+		handler = consumer.HandlerFunc[MyMessage](func(_ context.Context, msg MyMessage) error {
 			fmt.Printf("Received message with key %s and body %s\n", msg.Key, msg.Body)
 
 			return nil
@@ -34,35 +33,52 @@ func main() {
 		})
 	)
 
-	defer cancel()
-
 	awsCfg := aws.NewConfig()
 	awsCfg.BaseEndpoint = aws.String(awsBaseEndpoint)
 	sqsClient := sqs.NewFromConfig(*awsCfg)
 
-	sqsConsumer := consumer.NewSQSConsumer[MyMessage](consumer.Config{
-		QueueURL:                queueURL,
-		ProcessorWorkerPoolSize: 10,
-		PollerWorkerPoolSize:    2,
-		MaxNumberOfMessages:     10,
-		WaitTimeSeconds:         2,
-		VisibilityTimeout:       10,
-		ErrorNumberThreshold:    0,
-	}, sqsClient, adapter, nil, logger)
+	consumerConfig, err := consumer.NewConfig(queueURL,
+		consumer.WithProcessorWorkerPoolSize(10),
+		consumer.WithPollerWorkerPoolSize(2),
+		consumer.WithMaxNumberOfMessages(10),
+		consumer.WithWaitTimeSeconds(2),
+		consumer.WithVisibilityTimeout(10),
+		consumer.WithErrorNumberThreshold(0),
+	)
+	if err != nil {
+		panic(fmt.Errorf("failed to create consumer config: %w", err))
+	}
 
-	if err := produceMessages(sqsClient, 10); err != nil {
+	sqsConsumer := consumer.NewSQSConsumer[MyMessage](*consumerConfig, sqsClient, adapter, nil, logger)
+
+	if err = produceMessages(sqsClient, 10); err != nil {
 		panic(fmt.Errorf("failed to produce message: %w", err))
 	}
 
+	// setup signal handling for graceful shutdown
+	shutdownCtx, shutdownCancel := signal.NotifyContext(ctx, syscall.SIGINT, syscall.SIGTERM)
+	defer shutdownCancel()
+
+	// handle shutdown
 	go func() {
-		if err := sqsConsumer.Consume(ctx, queueURL, handler); err != nil {
-			fmt.Println(err)
+		<-shutdownCtx.Done()
+		logger.Info("Received shutdown signal, initiating graceful shutdown...")
+
+		// use the consumer's Close method for proper shutdown
+		if err = sqsConsumer.Close(); err != nil {
+			logger.Error("Error during consumer shutdown", "error", err)
 		}
+
+		logger.Info("Consumer shutdown completed successfully")
 	}()
 
-	// notify context to stop the sqsConsumer by the signal
-	signal.NotifyContext(ctx, os.Interrupt)
-	<-ctx.Done()
+	// start consuming messages (blocks until shutdown)
+	if err = sqsConsumer.Consume(ctx, queueURL, handler); err != nil {
+		fmt.Printf("Consumer failed: %v\n", err)
+		os.Exit(1)
+	}
+
+	logger.Info("Consumer shutdown complete")
 }
 
 func produceMessages(sqsClient *sqs.Client, amount int) error {
@@ -82,14 +98,4 @@ func produceMessages(sqsClient *sqs.Client, amount int) error {
 type MyMessage struct {
 	Key  string
 	Body string
-}
-
-func (m MyMessage) Payload() any {
-	// TODO implement me
-	panic("implement me")
-}
-
-func (m MyMessage) Headers() map[string][]byte {
-	// TODO implement me
-	panic("implement me")
 }

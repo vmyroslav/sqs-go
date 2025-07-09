@@ -1,0 +1,114 @@
+name: sqs-observability-example
+
+services:
+  localstack:
+    image: localstack/localstack:4.6
+    container_name: localstack-sqs
+    ports:
+      - "4566:4566"
+    environment:
+      - SERVICES=sqs
+      - DEBUG=1
+      - DATA_DIR=/tmp/localstack/data
+      - DOCKER_HOST=unix:///var/run/docker.sock
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock"
+      - "./init-sqs.sh:/etc/localstack/init/ready.d/init-sqs.sh"
+    healthcheck:
+      test: ["CMD", "awslocal", "sqs", "list-queues"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    networks:
+      - obs_example
+
+  # Jaeger for distributed tracing
+  jaeger:
+    image: cr.jaegertracing.io/jaegertracing/jaeger:2.8.0
+    container_name: jaeger
+    ports:
+      - "14268:14268"  # Jaeger collector HTTP
+      - "16686:16686"  # Jaeger UI
+      - "14317:4317"   # Jaeger v2 OTLP gRPC receiver (mapped to avoid conflict)
+      - "14318:4318"   # Jaeger v2 OTLP HTTP receiver (mapped to avoid conflict)
+    environment:
+      - COLLECTOR_OTLP_ENABLED=true
+    networks:
+      - obs_example
+
+  # Prometheus for metrics
+  prometheus:
+    image: prom/prometheus:v3.4.2
+    container_name: prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - "./prometheus.yml:/etc/prometheus/prometheus.yml"
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=200h'
+      - '--web.enable-lifecycle'
+    networks:
+      - obs_example
+
+  # OpenTelemetry Collector
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.129.1
+    container_name: otel-collector
+    ports:
+      - "4317:4317"   # OTLP gRPC receiver
+      - "4318:4318"   # OTLP HTTP receiver
+      - "8888:8888"   # Prometheus metrics
+      - "8889:8889"   # Prometheus exporter metrics
+    volumes:
+      - "./otel-collector.yml:/etc/otelcol-contrib/otel-collector.yml"
+    command: ["--config=/etc/otelcol-contrib/otel-collector.yml"]
+    depends_on:
+      - jaeger
+      - prometheus
+    networks:
+      - obs_example
+
+  # SQS Consumer Observability Example
+  sqs-consumer:
+    build:
+      context: ../../
+      dockerfile: examples/observability/Dockerfile
+    container_name: sqs-consumer-example
+    ports:
+      - "9464:9464"   # Prometheus metrics endpoint
+    environment:
+      # AWS/SQS Configuration
+      - AWS_REGION=us-east-1
+      - AWS_ENDPOINT=http://localstack:4566
+      - QUEUE_URL=http://localstack:4566/000000000000/test-queue
+      - AWS_ACCESS_KEY_ID=test
+      - AWS_SECRET_ACCESS_KEY=test
+      
+      # OpenTelemetry Configuration
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4318
+      - METRICS_PORT=9464
+      
+      # Consumer Configuration
+      - POLLING_WORKERS=2
+      - PROCESSING_WORKERS=4
+      - MAX_MESSAGES=1
+      - WAIT_TIME_SECONDS=2
+      - VISIBILITY_TIMEOUT=5
+      - SHUTDOWN_TIMEOUT=10
+      - ENABLE_STDOUT_TRACES=false
+    depends_on:
+      localstack:
+        condition: service_healthy
+      otel-collector:
+        condition: service_started
+    networks:
+      - obs_example
+    restart: unless-stopped
+
+networks:
+  obs_example:
+    driver: bridge
