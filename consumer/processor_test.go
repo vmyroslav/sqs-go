@@ -14,16 +14,32 @@ import (
 	sqstypes "github.com/aws/aws-sdk-go-v2/service/sqs/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/vmyroslav/sqs-go/consumer/observability"
 )
+
+// createTestObservability creates no-op observability components for tests
+func createTestObservability() (observability.SQSTracer, *observability.Config) {
+	obsCfg := observability.NewConfig() // Uses noop providers by default
+	tracer := observability.NewTracer(obsCfg)
+
+	return tracer, obsCfg
+}
 
 func Test_Process_WhenHandlerWorkerPoolSizeIsZero_ReturnsError(t *testing.T) {
 	t.Parallel()
 
-	p := &processorSQS[sqstypes.Message]{
-		cfg: processorConfig{
+	tracer, obsCfg := createTestObservability()
+	p := newProcessorSQS[sqstypes.Message](
+		processorConfig{
 			WorkerPoolSize: 0,
+			QueueURL:       "test-queue-url",
 		},
-	}
+		NewDummyAdapter[sqstypes.Message](),
+		&mockAcknowledger{},
+		slog.New(slog.DiscardHandler),
+		tracer,
+		obsCfg.Propagator(),
+	)
 	err := p.Process(context.Background(), make(chan sqstypes.Message), nil)
 	assert.Error(t, err)
 }
@@ -39,6 +55,7 @@ func Test_Process_WhenMessagesChannelIsClosed(t *testing.T) {
 		ctx, cancel = context.WithTimeout(context.Background(), 10*time.Millisecond)
 		pCfg        = processorConfig{
 			WorkerPoolSize: 2,
+			QueueURL:       "test-queue-url",
 		}
 		sqsClient = newMockSqsConnector(t)
 		handler   = HandlerFunc[sqstypes.Message](func(_ context.Context, _ sqstypes.Message) error {
@@ -54,11 +71,14 @@ func Test_Process_WhenMessagesChannelIsClosed(t *testing.T) {
 			callCh <- struct{}{} // mock the processing of the message
 		}).Return(&sqs.DeleteMessageOutput{}, nil)
 
+	tracer, obsCfg := createTestObservability()
 	p := newProcessorSQS[sqstypes.Message](
 		pCfg,
 		NewDummyAdapter[sqstypes.Message](),
 		newSyncAcknowledger(queueURL, sqsClient),
 		logger,
+		tracer,
+		obsCfg.Propagator(),
 	)
 
 	go func() {
@@ -81,6 +101,7 @@ func Test_Process_WhenContextIsCancelled_ExitsWithoutError(t *testing.T) {
 		errCh    = make(chan error, 1)
 		pCfg     = processorConfig{
 			WorkerPoolSize: 2,
+			QueueURL:       "test-queue-url",
 		}
 		sqsClient = newMockSqsConnector(t)
 		logger    = slog.New(slog.NewJSONHandler(os.Stdout, nil))
@@ -89,11 +110,14 @@ func Test_Process_WhenContextIsCancelled_ExitsWithoutError(t *testing.T) {
 		})
 	)
 
+	tracer, obsCfg := createTestObservability()
 	p := newProcessorSQS[sqstypes.Message](
 		pCfg,
 		NewDummyAdapter[sqstypes.Message](),
 		newSyncAcknowledger(queueURL, sqsClient),
 		logger,
+		tracer,
+		obsCfg.Propagator(),
 	)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Millisecond)
@@ -114,17 +138,21 @@ func Test_Process_WhenMessageIsReceived_CallsHandlerWithCorrectMessage(t *testin
 		msgs = make(chan sqstypes.Message, 1)
 		pCfg = processorConfig{
 			WorkerPoolSize: 2,
+			QueueURL:       "test-queue-url",
 		}
 		mockAck = newMockAcknowledger(nil, 1)
 		logger  = slog.New(slog.NewJSONHandler(os.Stdout, nil))
 		msgBody = "original message"
 	)
 
+	tracer, obsCfg := createTestObservability()
 	p := newProcessorSQS[sqstypes.Message](
 		pCfg,
 		NewDummyAdapter[sqstypes.Message](),
 		mockAck,
 		logger,
+		tracer,
+		obsCfg.Propagator(),
 	)
 
 	msgs <- sqstypes.Message{Body: aws.String(msgBody)}
@@ -160,6 +188,7 @@ func Test_Process_HandlingAckErrors(t *testing.T) {
 		msgs = make(chan sqstypes.Message, 1)
 		pCfg = processorConfig{
 			WorkerPoolSize: 2,
+			QueueURL:       "test-queue-url",
 		}
 		logger  = slog.New(slog.DiscardHandler)
 		msgBody = "original message"
@@ -171,11 +200,14 @@ func Test_Process_HandlingAckErrors(t *testing.T) {
 
 	defer close(msgs)
 
+	tracer, obsCfg := createTestObservability()
 	p := newProcessorSQS[sqstypes.Message](
 		pCfg,
 		NewDummyAdapter[sqstypes.Message](),
 		newMockAcknowledger(fmt.Errorf("failed to ack message"), 3),
 		logger,
+		tracer,
+		obsCfg.Propagator(),
 	)
 
 	go func() {
@@ -236,6 +268,7 @@ func Test_Process_WhenHandlerReturnsError_MessageRejected(t *testing.T) {
 		msgs = make(chan sqstypes.Message, 1)
 		pCfg = processorConfig{
 			WorkerPoolSize: 1,
+			QueueURL:       "test-queue-url",
 		}
 		logger       = slog.New(slog.DiscardHandler)
 		msgBody      = "test message"
@@ -246,11 +279,14 @@ func Test_Process_WhenHandlerReturnsError_MessageRejected(t *testing.T) {
 		rejectCalled: rejectCalled,
 	}
 
+	tracer, obsCfg := createTestObservability()
 	p := newProcessorSQS[sqstypes.Message](
 		pCfg,
 		NewDummyAdapter[sqstypes.Message](),
 		mockAck,
 		logger,
+		tracer,
+		obsCfg.Propagator(),
 	)
 
 	handler := HandlerFunc[sqstypes.Message](func(_ context.Context, _ sqstypes.Message) error {

@@ -22,6 +22,7 @@ func NewIgnoreErrorsMiddleware[T any](l *slog.Logger) Middleware[T] {
 	}
 }
 
+// NewPanicRecoverMiddleware creates a middleware that recovers from panics during message processing
 func NewPanicRecoverMiddleware[T any]() Middleware[T] {
 	return func(next HandlerFunc[T]) HandlerFunc[T] {
 		return func(ctx context.Context, msg T) (err error) {
@@ -36,6 +37,7 @@ func NewPanicRecoverMiddleware[T any]() Middleware[T] {
 	}
 }
 
+// NewTimeLimitMiddleware creates a middleware that enforces a timeout on message processing
 func NewTimeLimitMiddleware[T any](timeout time.Duration) Middleware[T] {
 	return func(next HandlerFunc[T]) HandlerFunc[T] {
 		return func(ctx context.Context, msg T) error {
@@ -63,25 +65,23 @@ func NewTimeLimitMiddleware[T any](timeout time.Duration) Middleware[T] {
 func MiddlewareAdapter[T any](mw Middleware[any]) Middleware[T] {
 	return func(next HandlerFunc[T]) HandlerFunc[T] {
 		return func(ctx context.Context, msg T) error {
-			// Create a new handler that operates on T
+			// create a new handler that operates on T
 			specificHandler := func(ctx context.Context, msg T) error {
 				// Call the original handler with the specific message
 				return next.Handle(ctx, msg)
 			}
 
-			// Create a new handler that matches the HandlerFunc[Message] type
+			// create a new handler that matches the HandlerFunc[Message] type
 			genericHandler := func(ctx context.Context, msg any) error {
-				// Convert msg from Message to T
+				// convert msg from Message to T
 				specificMsg, ok := msg.(T)
 				if !ok {
 					return fmt.Errorf("unexpected message type: %T", msg)
 				}
 
-				// Call specificHandler with the specific message
 				return specificHandler(ctx, specificMsg)
 			}
 
-			// Call the original middleware with the generic handler and message
 			return mw(genericHandler)(ctx, msg)
 		}
 	}

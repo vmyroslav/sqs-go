@@ -5,7 +5,7 @@
 
 # SQS Consumer Library for Go
 
-A type-safe Go library for consuming messages from **AWS SQS** with support for custom message adapters, middleware chains, and configurable worker pools.
+A type-safe Go library for consuming messages from **AWS SQS** with support for custom message adapters, middleware chains, configurable worker pools, and OpenTelemetry observability.
 
 ## Features
 
@@ -14,6 +14,7 @@ A type-safe Go library for consuming messages from **AWS SQS** with support for 
 - **Middleware support** for cross-cutting concerns (logging, metrics, error handling)
 - **Configurable worker pools** for polling and processing
 - **Built-in error handling** with configurable thresholds
+- **OpenTelemetry observability** - distributed tracing and metrics with automatic instrumentation
 
 ## Installation
 
@@ -56,7 +57,11 @@ func main() {
 	adapter := consumer.NewJSONMessageAdapter[MyMessage]()
 	
 	// Configure consumer
-	cfg := consumer.NewDefaultConfig(queueURL)
+	cfg, err := consumer.NewConfig(queueURL)
+	if err != nil {
+		log.Fatal(err)
+	}
+	
 	sqsConsumer := consumer.NewSQSConsumer[MyMessage](
 		cfg, 
 		sqsClient, 
@@ -80,29 +85,92 @@ func main() {
 
 ## Configuration
 
-The `Config` struct provides customization options:
+Use functional options to configure the consumer:
 
 ```go
-config := consumer.Config{
-    QueueURL:                "https://sqs.region.amazonaws.com/account/queue-name",
-    ProcessorWorkerPoolSize: 10,    // Number of worker goroutines for processing messages
-    PollerWorkerPoolSize:    2,     // Number of worker goroutines for polling SQS
-    MaxNumberOfMessages:     10,    // Max messages to receive in a single request (1-10)
-    WaitTimeSeconds:         20,    // Long polling wait time (0-20 seconds)
-    VisibilityTimeout:       30,    // Message visibility timeout in seconds
-    ErrorNumberThreshold:    5,     // Max consecutive errors before stopping
-    GracefulShutdownTimeout: 30,    // Graceful shutdown timeout in seconds
+config, err := consumer.NewConfig(queueURL,
+    consumer.WithProcessorWorkerPoolSize(10),    // Number of worker goroutines for processing messages
+    consumer.WithPollerWorkerPoolSize(2),        // Number of worker goroutines for polling SQS
+    consumer.WithMaxNumberOfMessages(10),        // Max messages to receive in a single request (1-10)
+    consumer.WithWaitTimeSeconds(20),            // Long polling wait time (0-20 seconds)
+    consumer.WithVisibilityTimeout(30),          // Message visibility timeout in seconds
+    consumer.WithErrorNumberThreshold(5),        // Max consecutive errors before stopping
+    consumer.WithGracefulShutdownTimeout(30),    // Graceful shutdown timeout in seconds
+)
+if err != nil {
+    log.Fatal(err)
 }
 ```
 
 ### Default Configuration
 
-Use `NewDefaultConfig(queueURL)` for production-ready defaults:
+Use `NewConfig(queueURL)` without options for defaults:
 - 10 processor workers
 - 2 poller workers
-- 20-second long polling
+- 1-second long polling
 - 30-second visibility timeout
 - Graceful shutdown enabled
+
+## Observability
+
+Enable OpenTelemetry-based observability with distributed tracing and metrics:
+
+### Basic Observability Setup
+
+```go
+import (
+    "github.com/vmyroslav/sqs-go/consumer"
+    "github.com/vmyroslav/sqs-go/consumer/observability"
+    "go.opentelemetry.io/otel"
+    "go.opentelemetry.io/otel/exporters/jaeger"
+    "go.opentelemetry.io/otel/sdk/trace"
+    "go.opentelemetry.io/otel/sdk/metric"
+)
+
+// Setup OpenTelemetry providers
+traceExporter, _ := jaeger.New(jaeger.WithCollectorEndpoint())
+tracerProvider := trace.NewTracerProvider(trace.WithBatcher(traceExporter))
+
+metricExporter, _ := prometheus.New()
+meterProvider := metric.NewMeterProvider(metric.WithReader(metricExporter))
+
+// Configure observability
+obsConfig := observability.NewConfig(
+    observability.WithServiceName("my-sqs-consumer"),
+    observability.WithServiceVersion("1.0.0"),
+    observability.WithTracerProvider(tracerProvider),
+    observability.WithMeterProvider(meterProvider),
+)
+
+// Create consumer with observability
+config, err := consumer.NewConfig(queueURL,
+    consumer.WithObservability(obsConfig),
+)
+```
+
+### Available Metrics
+
+The library automatically collects these metrics:
+- **Message counters**: `sqs_messages_total` (success/error status)
+- **Processing duration**: `sqs_processing_duration_seconds`
+- **Polling duration**: `sqs_polling_duration_seconds`
+- **Active workers**: `sqs_active_workers` (poller/processor)
+- **Buffer size**: `sqs_buffer_size`
+- **Acknowledgment duration**: `sqs_acknowledgment_duration_seconds`
+
+### Distributed Tracing
+
+Traces are automatically created for:
+- **Poll operations**: SQS message polling
+- **Message processing**: End-to-end message handling
+- **Message transformation**: Adapter operations
+- **Acknowledgment**: Message ack/reject operations
+
+Context propagation works automatically with SQS message attributes.
+
+### Disabled by Default
+
+Observability is disabled by default for. When disabled, noop providers are used with minimal performance impact.
 
 ## Message Adapters
 
@@ -175,7 +243,9 @@ sqsConsumer := consumer.NewSQSConsumer[MyMessage](
 
 ## Advanced Examples
 
-For more examples, see the `/examples` directory.
+For more examples including observability setups, see the `/examples` directory:
+- `examples/simple/` - Basic consumer usage
+- `examples/json/` - JSON message processing
 
 ## Contributing
 
