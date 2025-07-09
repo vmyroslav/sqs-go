@@ -100,6 +100,12 @@ func NewSQSConsumer[T any](
 		)
 	)
 
+	obsMiddleware := observabilityMiddleware[T](tracer, metrics, cfg.QueueURL)
+
+	// inject observability middleware as FIRST middleware
+	allMiddlewares := []Middleware[T]{obsMiddleware}
+	allMiddlewares = append(allMiddlewares, middlewares...)
+
 	c := &SQSConsumer[T]{
 		cfg: cfg,
 		poller: newSqsPoller(pollerConfig{
@@ -120,7 +126,7 @@ func NewSQSConsumer[T any](
 			tracer,
 			cfg.Observability.Propagator(),
 		),
-		middlewares:  middlewares,
+		middlewares:  allMiddlewares,
 		stopSignalCh: make(chan struct{}, 1),
 		stoppedCh:    make(chan struct{}, 1),
 		logger:       logger,
