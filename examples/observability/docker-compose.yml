@@ -1,0 +1,73 @@
+services:
+  localstack:
+    image: localstack/localstack:4.6
+    container_name: localstack-sqs
+    ports:
+      - "4566:4566"
+    environment:
+      - SERVICES=sqs
+      - DEBUG=1
+      - DATA_DIR=/tmp/localstack/data
+      - DOCKER_HOST=unix:///var/run/docker.sock
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock"
+      - "./init-sqs.sh:/etc/localstack/init/ready.d/init-sqs.sh"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4566/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    networks:
+      - obs_example
+
+  # Jaeger for distributed tracing
+  jaeger:
+    image: jaegertracing/all-in-one:1.71.0
+    container_name: jaeger
+    ports:
+      - "14268:14268"  # Jaeger collector HTTP
+      - "16686:16686"  # Jaeger UI
+    environment:
+      - COLLECTOR_OTLP_ENABLED=true
+    networks:
+      - obs_example
+
+  # Prometheus for metrics
+  prometheus:
+    image: prom/prometheus:v3.4.2
+    container_name: prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - "./prometheus.yml:/etc/prometheus/prometheus.yml"
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=200h'
+      - '--web.enable-lifecycle'
+    networks:
+      - obs_example
+
+  # OpenTelemetry Collector
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.129.1
+    container_name: otel-collector
+    ports:
+      - "4317:4317"   # OTLP gRPC receiver
+      - "4318:4318"   # OTLP HTTP receiver
+      - "8888:8888"   # Prometheus metrics
+      - "8889:8889"   # Prometheus exporter metrics
+    volumes:
+      - "./otel-collector.yml:/etc/otelcol-contrib/otel-collector.yml"
+    command: ["--config=/etc/otelcol-contrib/otel-collector.yml"]
+    depends_on:
+      - jaeger
+      - prometheus
+    networks:
+      - obs_example
+
+networks:
+  obs_example:
+    driver: bridge
