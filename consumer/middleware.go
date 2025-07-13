@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"log/slog"
 	"time"
+
+	"github.com/vmyroslav/sqs-go/consumer/observability"
 )
 
 // NewIgnoreErrorsMiddleware creates a new middleware that ignores errors that occur during message processing.
@@ -83,6 +85,40 @@ func MiddlewareAdapter[T any](mw Middleware[any]) Middleware[T] {
 			}
 
 			return mw(genericHandler)(ctx, msg)
+		}
+	}
+}
+
+// observabilityMiddleware creates a processing middleware that handles tracing and metrics
+func observabilityMiddleware[T any](tracer observability.SQSTracer, metrics observability.SQSMetrics, queueURL string) Middleware[T] {
+	return func(next HandlerFunc[T]) HandlerFunc[T] {
+		return func(ctx context.Context, msg T) error {
+			// create handler span - this is a child of the processing span
+			handlerCtx, handlerSpan := tracer.Span(ctx, observability.SpanNameHandle,
+				observability.WithInternalSpanKind(),
+				observability.WithAction(observability.ActionConsume),
+			)
+			defer handlerSpan.End()
+
+			start := time.Now()
+
+			err := next.Handle(handlerCtx, msg)
+
+			duration := time.Since(start)
+
+			status := observability.RecordSpanResult(handlerSpan, err)
+
+			metrics.RecordDuration(ctx, observability.MetricProcessingDuration, duration,
+				observability.WithQueueURLMetric(queueURL),
+				observability.WithStatus(status),
+			)
+
+			metrics.Counter(ctx, observability.MetricMessages, 1,
+				observability.WithQueueURLMetric(queueURL),
+				observability.WithStatus(status),
+			)
+
+			return err
 		}
 	}
 }

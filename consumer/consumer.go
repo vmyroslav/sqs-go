@@ -100,6 +100,12 @@ func NewSQSConsumer[T any](
 		)
 	)
 
+	obsMiddleware := observabilityMiddleware[T](tracer, metrics, cfg.QueueURL)
+
+	// inject observability middleware as FIRST middleware
+	allMiddlewares := []Middleware[T]{obsMiddleware}
+	allMiddlewares = append(allMiddlewares, middlewares...)
+
 	c := &SQSConsumer[T]{
 		cfg: cfg,
 		poller: newSqsPoller(pollerConfig{
@@ -120,7 +126,7 @@ func NewSQSConsumer[T any](
 			tracer,
 			cfg.Observability.Propagator(),
 		),
-		middlewares:  middlewares,
+		middlewares:  allMiddlewares,
 		stopSignalCh: make(chan struct{}, 1),
 		stoppedCh:    make(chan struct{}, 1),
 		logger:       logger,
@@ -131,6 +137,15 @@ func NewSQSConsumer[T any](
 	return c
 }
 
+// Consume starts consuming messages from the specified SQS queue using the provided message handler.
+// The method respects context cancellation but for graceful shutdown with proper message processing
+// completion, use the Close() method instead of canceling the context.
+//
+// Context behavior:
+//   - Context cancellation will immediately stop the consumer and return ctx.Err()
+//   - For graceful shutdown, call Close() which allows in-flight messages to complete processing
+//
+// Returns an error if the consumer fails to start or encounters an unrecoverable error.
 func (c *SQSConsumer[T]) Consume(ctx context.Context, queueURL string, messageHandler Handler[T]) error {
 	var (
 		// requires some tuning to find the optimal value depending on the message processing time and visibility timeout
@@ -240,6 +255,16 @@ func (c *SQSConsumer[T]) Consume(ctx context.Context, queueURL string, messageHa
 	return nil
 }
 
+// Close performs a graceful shutdown of the SQS consumer.
+// This is the recommended way to stop the consumer as it ensures proper cleanup:
+//
+// Shutdown sequence:
+//  1. Stops polling for new messages from SQS
+//  2. Allows in-flight messages in the buffer to complete processing
+//  3. Waits for all worker goroutines to finish cleanly
+//  4. Respects the configured GracefulShutdownTimeout
+//
+// Returns an error if the consumer fails to stop within the configured timeout period.
 func (c *SQSConsumer[T]) Close() error {
 	c.mu.Lock()
 

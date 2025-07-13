@@ -120,6 +120,12 @@ func (p *sqsPoller) runWorker(
 			WaitTimeSeconds:     p.cfg.WaitTimeSeconds,
 		})
 		if err != nil {
+			if errors.Is(err, context.Canceled) {
+				p.logger.DebugContext(ctx, "polling call canceled due to context cancellation")
+
+				return
+			}
+
 			duration := time.Since(start)
 			p.metrics.RecordDuration(ctx, observability.MetricPollingDuration, duration,
 				observability.WithQueueURLMetric(queueURL),

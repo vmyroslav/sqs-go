@@ -11,21 +11,21 @@ type MetricName string
 
 const (
 	// MetricMessages represents a count of messages.
-	MetricMessages MetricName = "sqs.messages"
+	MetricMessages MetricName = "sqs_messages"
 	// MetricPollingRequests represents a count of polling API calls.
-	MetricPollingRequests MetricName = "sqs.polling.requests"
+	MetricPollingRequests MetricName = "sqs_polling_requests"
 	// MetricActiveWorkers represents the number of active workers.
-	MetricActiveWorkers MetricName = "sqs.workers.active"
+	MetricActiveWorkers MetricName = "sqs_workers_active"
 	// MetricBufferSize represents the internal channel buffer size.
-	MetricBufferSize MetricName = "sqs.buffer.size"
+	MetricBufferSize MetricName = "sqs_buffer_size"
 	// MetricMessagesReceived represents the number of messages received in each polling request.
-	MetricMessagesReceived MetricName = "sqs.messages.received"
+	MetricMessagesReceived MetricName = "sqs_messages_received"
 	// MetricProcessingDuration represents the time to process a message.
-	MetricProcessingDuration MetricName = "sqs.processing.duration"
+	MetricProcessingDuration MetricName = "sqs_processing_duration"
 	// MetricPollingDuration represents the time to poll from SQS.
-	MetricPollingDuration MetricName = "sqs.polling.duration"
+	MetricPollingDuration MetricName = "sqs_polling_duration"
 	// MetricAcknowledgmentDuration represents the time to acknowledge a message.
-	MetricAcknowledgmentDuration MetricName = "sqs.acknowledgment.duration"
+	MetricAcknowledgmentDuration MetricName = "sqs_acknowledgment_duration"
 )
 
 // MetricMetadata holds static information about a metric.

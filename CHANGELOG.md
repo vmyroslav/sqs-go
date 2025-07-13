@@ -17,6 +17,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - Processing duration measurements
   - Observable decorators for all core components (adapter, acknowledger, poller, processor)
   - Automatic span creation for message lifecycle (poll, process, transform, ack/reject)
+- **Complete Observability Example**
+  - LocalStack integration for local SQS development
+  - Jaeger v2 for distributed tracing visualization
+  - Prometheus for metrics collection and monitoring
+  - OpenTelemetry Collector for data aggregation and export
+  - Docker Compose setup with all required services
+  - Automated SQS queue initialization with Dead Letter Queue (DLQ) configuration
+  - Proper redrive policy setup with 3 max retries before DLQ
 
 ## [v0.2.0] - 2025-07-01
 
