@@ -247,24 +247,6 @@ For more examples including observability setups, see the `/examples` directory:
 - **`examples/json/`** - JSON message processing with middleware
 - **`examples/observability/`** - Complete observability stack with OpenTelemetry
 
-#### Running the Observability Example
-
-```bash
-cd examples/observability
-docker-compose up -d
-```
-
-Access the services:
-- **Jaeger UI**: http://localhost:16686 (view distributed traces)
-- **Prometheus**: http://localhost:9090 (query metrics)
-- **Consumer Metrics**: http://localhost:9464/metrics (Prometheus format)
-
-The example demonstrates:
-- ✅ Complete message lifecycle tracing
-- ✅ Failed message handling with DLQ
-- ✅ Metrics collection for all operations
-- ✅ Proper graceful shutdown handling
-
 ## Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request. For major changes, please open an issue first to discuss what you would like to change.
