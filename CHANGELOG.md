@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v0.3.0] - 2025-07-13
+
 ### Added
 - **Observability Support** - Complete OpenTelemetry integration with distributed tracing and metrics
   - Distributed tracing support with context propagation from SQS message attributes
