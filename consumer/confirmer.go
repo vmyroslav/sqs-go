@@ -37,7 +37,7 @@ func (a *syncAcknowledger) Reject(_ context.Context, _ sqstypes.Message) error {
 
 // observableAcknowledger wraps an acknowledger with observability instrumentation
 type observableAcknowledger struct {
-	acknowledger acknowledger
+	acknowledger Acknowledger
 	tracer       observability.SQSTracer
 	metrics      observability.SQSMetrics
 	queueURL     string
@@ -45,7 +45,7 @@ type observableAcknowledger struct {
 
 // newObservableAcknowledger creates a new observability-decorated acknowledger
 func newObservableAcknowledger(
-	acknowledger acknowledger,
+	acknowledger Acknowledger,
 	tracer observability.SQSTracer,
 	metrics observability.SQSMetrics,
 	queueURL string,

@@ -28,6 +28,7 @@ func (e *WrongConfigError) Error() string {
 
 type Config struct {
 	Observability           *observability.Config
+	Acknowledger            Acknowledger
 	QueueURL                string
 	ProcessorWorkerPoolSize int32
 	PollerWorkerPoolSize    int32
@@ -129,6 +130,13 @@ func WithGracefulShutdownTimeout(timeout int32) Option {
 func WithObservability(obs *observability.Config) Option {
 	return option(func(c *Config) {
 		c.Observability = obs
+	})
+}
+
+// WithAcknowledger sets the acknowledger configuration
+func WithAcknowledger(ack Acknowledger) Option {
+	return option(func(c *Config) {
+		c.Acknowledger = ack
 	})
 }
 

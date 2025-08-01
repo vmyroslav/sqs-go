@@ -19,7 +19,7 @@ type processorConfig struct {
 type processorSQS[T any] struct { // nolint:govet
 	cfg            processorConfig
 	messageAdapter MessageAdapter[T]
-	acknowledger   acknowledger
+	acknowledger   Acknowledger
 	logger         *slog.Logger
 	tracer         observability.SQSTracer
 	propagator     propagation.TextMapPropagator
@@ -28,7 +28,7 @@ type processorSQS[T any] struct { // nolint:govet
 func newProcessorSQS[T any](
 	cfg processorConfig,
 	messageAdapter MessageAdapter[T],
-	acknowledger acknowledger,
+	acknowledger Acknowledger,
 	logger *slog.Logger,
 	tracer observability.SQSTracer,
 	propagator propagation.TextMapPropagator,
