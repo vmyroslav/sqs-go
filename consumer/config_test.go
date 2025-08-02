@@ -13,6 +13,7 @@ func TestNewConfig(t *testing.T) {
 	t.Run("NewConfig with functional options", func(t *testing.T) {
 		config, err := NewConfig("http://localhost:4566/000000000000/queue",
 			WithProcessorWorkerPoolSize(10),
+			WithRejectStrategy(RejectStrategy(1)),
 			WithPollerWorkerPoolSize(2),
 			WithMaxNumberOfMessages(10),
 			WithWaitTimeSeconds(1),
@@ -23,6 +24,7 @@ func TestNewConfig(t *testing.T) {
 
 		require.NoError(t, err)
 		assert.Equal(t, "http://localhost:4566/000000000000/queue", config.QueueURL)
+		assert.Equal(t, RejectStrategy(2), RejectStrategy(2))
 		assert.Equal(t, int32(10), config.ProcessorWorkerPoolSize)
 		assert.Equal(t, int32(2), config.PollerWorkerPoolSize)
 		assert.Equal(t, int32(10), config.MaxNumberOfMessages)
@@ -38,6 +40,7 @@ func TestNewConfig(t *testing.T) {
 
 		require.NoError(t, err)
 		assert.Equal(t, "http://localhost:4566/000000000000/queue", config.QueueURL)
+		assert.Equal(t, Immediate, config.RejectStrategy)
 		assert.Equal(t, int32(DefaultProcessorWorkerPoolSize), config.ProcessorWorkerPoolSize)
 		assert.Equal(t, int32(DefaultPollerWorkerPoolSize), config.PollerWorkerPoolSize)
 		assert.Equal(t, int32(DefaultMaxNumberOfMessages), config.MaxNumberOfMessages)
@@ -187,6 +190,22 @@ func TestConfig_IsValid(t *testing.T) {
 				VisibilityTimeout:       50000,
 				ErrorNumberThreshold:    -1,
 				GracefulShutdownTimeout: 30,
+			},
+			want:    false,
+			wantErr: true,
+		},
+		{
+			name: "Invalid Config - Invalid RejectStrategy",
+			config: &Config{
+				QueueURL:                "http://localhost:4566/000000000000/queue",
+				RejectStrategy:          10 << 24,
+				ProcessorWorkerPoolSize: DefaultProcessorWorkerPoolSize,
+				PollerWorkerPoolSize:    DefaultPollerWorkerPoolSize,
+				MaxNumberOfMessages:     DefaultMaxNumberOfMessages,
+				WaitTimeSeconds:         DefaultWaitTimeSeconds,
+				VisibilityTimeout:       DefaultVisibilityTimeout,
+				ErrorNumberThreshold:    DefaultErrorNumberThreshold,
+				GracefulShutdownTimeout: DefaultGracefulShutdownTimeout,
 			},
 			want:    false,
 			wantErr: true,

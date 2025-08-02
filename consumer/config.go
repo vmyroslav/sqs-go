@@ -9,6 +9,7 @@ import (
 
 // Default values for consumer configuration
 const (
+	DefaultRejectStrategy          = Immediate
 	DefaultProcessorWorkerPoolSize = 10
 	DefaultPollerWorkerPoolSize    = 2
 	DefaultMaxNumberOfMessages     = 10
@@ -29,6 +30,7 @@ func (e *WrongConfigError) Error() string {
 type Config struct {
 	Observability           *observability.Config
 	QueueURL                string
+	RejectStrategy          RejectStrategy
 	ProcessorWorkerPoolSize int32
 	PollerWorkerPoolSize    int32
 	MaxNumberOfMessages     int32
@@ -54,6 +56,7 @@ func (o option) apply(c *Config) {
 func NewConfig(queueURL string, opts ...Option) (*Config, error) {
 	c := &Config{
 		QueueURL:                queueURL,
+		RejectStrategy:          DefaultRejectStrategy,
 		ProcessorWorkerPoolSize: DefaultProcessorWorkerPoolSize,
 		PollerWorkerPoolSize:    DefaultPollerWorkerPoolSize,
 		MaxNumberOfMessages:     DefaultMaxNumberOfMessages,
@@ -132,6 +135,13 @@ func WithObservability(obs *observability.Config) Option {
 	})
 }
 
+// WithObservability sets reject strategy. Default is [Immediate]
+func WithRejectStrategy(strategy RejectStrategy) Option {
+	return option(func(c *Config) {
+		c.RejectStrategy = strategy
+	})
+}
+
 func (c *Config) IsValid() (bool, error) { // nolint: cyclop
 	if c.QueueURL == "" {
 		return false, &WrongConfigError{Err: fmt.Errorf("queueURL is empty")}
@@ -160,6 +170,10 @@ func (c *Config) IsValid() (bool, error) { // nolint: cyclop
 
 	if c.VisibilityTimeout < 0 || c.VisibilityTimeout > 43200 {
 		return false, &WrongConfigError{Err: fmt.Errorf("visibilityTimeout must be between 0 and 43200")}
+	}
+
+	if c.RejectStrategy > 1 {
+		return false, &WrongConfigError{Err: fmt.Errorf("unknown reject strategy")}
 	}
 
 	return true, nil

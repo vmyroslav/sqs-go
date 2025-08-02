@@ -45,6 +45,12 @@ func (f MessageAdapterFunc[T]) Transform(ctx context.Context, msg sqstypes.Messa
 	return f(ctx, msg)
 }
 
+type RejectStrategy int
+
+const (
+	Immediate RejectStrategy = iota + 1 // Will change the VisibilityTimeout of a message to 0 whenever message handling fails.
+)
+
 type acknowledger interface {
 	Ack(ctx context.Context, msg sqstypes.Message) error
 	Reject(ctx context.Context, msg sqstypes.Message) error
@@ -95,9 +101,9 @@ func NewSQSConsumer[T any](
 			messageAdapter, tracer, metrics, cfg.QueueURL,
 		)
 
-		obsAcknowledger = newObservableAcknowledger(
-			newSyncAcknowledger(cfg.QueueURL, sqsClient), tracer, metrics, cfg.QueueURL,
-		)
+		acknowledgerRejecter = newCompositeAcknowledger(newSyncAcknowledger(cfg.QueueURL, sqsClient), newSQSRejecter(cfg.QueueURL, cfg.RejectStrategy, sqsClient))
+
+		obsAcknowledger = newObservableAcknowledger(acknowledgerRejecter, tracer, metrics, cfg.QueueURL)
 	)
 
 	obsMiddleware := observabilityMiddleware[T](tracer, metrics, cfg.QueueURL)

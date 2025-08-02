@@ -10,9 +10,17 @@ import (
 )
 
 type SQSRejecter struct {
-	sqsClient         *sqs.Client // TODO: change to [sqsConnector]
-	QueueURL          string
-	VisibilityTimeout int
+	sqsClient sqsConnector
+	QueueURL  string
+	Strategy  RejectStrategy
+}
+
+func newSQSRejecter(queueURL string, strategy RejectStrategy, sqsClient sqsConnector) *SQSRejecter {
+	return &SQSRejecter{
+		sqsClient: sqsClient,
+		QueueURL:  queueURL,
+		Strategy:  strategy,
+	}
 }
 
 type ChangeVisibilityError struct {
@@ -35,11 +43,20 @@ func (s *SQSRejecter) Reject(ctx context.Context, msg sqstypes.Message) error {
 	_, err := s.sqsClient.ChangeMessageVisibility(ctx, &sqs.ChangeMessageVisibilityInput{
 		QueueUrl:          aws.String(s.QueueURL),
 		ReceiptHandle:     msg.ReceiptHandle,
-		VisibilityTimeout: 0, // immediately available
+		VisibilityTimeout: s.VisibilityTimeout(), // immediately available
 	})
 	if err != nil {
 		return &ChangeVisibilityError{Msg: msg, Err: err}
 	}
 
 	return nil
+}
+
+func (s *SQSRejecter) VisibilityTimeout() int32 {
+	switch s.Strategy {
+	case Immediate:
+		return 0
+	}
+
+	panic("unreachable")
 }
