@@ -19,9 +19,9 @@ func newCompositeAcknowledger(acknowledger, rejecter acknowledger) *CompositeAck
 }
 
 func (c *CompositeAcknowledger) Ack(ctx context.Context, msg sqstypes.Message) error {
-	return c.Acknowledger.Ack(ctx, msg)
+	return c.Acknowledger.Ack(ctx, msg) //nolint:wrapcheck // force wrapping error
 }
 
 func (c *CompositeAcknowledger) Reject(ctx context.Context, msg sqstypes.Message) error {
-	return c.Rejecter.Reject(ctx, msg)
+	return c.Rejecter.Reject(ctx, msg) //nolint:wrapcheck // force wrapping error
 }

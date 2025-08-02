@@ -28,6 +28,7 @@ func (e *WrongConfigError) Error() string {
 
 type Config struct {
 	Observability           *observability.Config
+	RejectStrategy          RejectStrategy
 	QueueURL                string
 	ProcessorWorkerPoolSize int32
 	PollerWorkerPoolSize    int32
@@ -55,6 +56,7 @@ func NewConfig(queueURL string, opts ...Option) (*Config, error) {
 	c := &Config{
 		QueueURL:                queueURL,
 		ProcessorWorkerPoolSize: DefaultProcessorWorkerPoolSize,
+		RejectStrategy:          &ImmediateRejectStrategy{},
 		PollerWorkerPoolSize:    DefaultPollerWorkerPoolSize,
 		MaxNumberOfMessages:     DefaultMaxNumberOfMessages,
 		WaitTimeSeconds:         DefaultWaitTimeSeconds,

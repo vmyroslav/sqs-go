@@ -39,6 +39,7 @@ func TestNewConfig(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, "http://localhost:4566/000000000000/queue", config.QueueURL)
 		assert.Equal(t, int32(DefaultProcessorWorkerPoolSize), config.ProcessorWorkerPoolSize)
+		assert.Equal(t, &ImmediateRejectStrategy{}, config.RejectStrategy)
 		assert.Equal(t, int32(DefaultPollerWorkerPoolSize), config.PollerWorkerPoolSize)
 		assert.Equal(t, int32(DefaultMaxNumberOfMessages), config.MaxNumberOfMessages)
 		assert.Equal(t, int32(DefaultWaitTimeSeconds), config.WaitTimeSeconds)

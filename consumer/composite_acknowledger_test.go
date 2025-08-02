@@ -42,7 +42,6 @@ func TestCompositeAcknowledger_Ack(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			mockAck := newMockAcknowledger(tt.ackError, 1)
 			mockRejecter := newMockAcknowledger(nil, 0)
-			
 			ca := newCompositeAcknowledger(mockAck, mockRejecter)
 			ctx := context.Background()
 			msg := sqstypes.Message{}
@@ -80,7 +79,7 @@ func TestCompositeAcknowledger_Reject(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			mockAck := newMockAcknowledger(nil, 0)
 			mockRejecter := newMockAcknowledger(tt.rejectError, 1)
-			
+
 			ca := newCompositeAcknowledger(mockAck, mockRejecter)
 			ctx := context.Background()
 			msg := sqstypes.Message{}
