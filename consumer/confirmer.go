@@ -35,6 +35,61 @@ func (a *syncAcknowledger) Ack(ctx context.Context, msg sqstypes.Message) error 
 
 func (a *syncAcknowledger) Reject(_ context.Context, _ sqstypes.Message) error { return nil }
 
+type immediateAcknowledger struct {
+	sqsClient sqsConnector
+	queueURL  string
+}
+
+func newImmediateAcknowledger(url string, client sqsConnector) acknowledger {
+	return &immediateAcknowledger{
+		sqsClient: client,
+		queueURL:  url,
+	}
+}
+
+func (a *immediateAcknowledger) Ack(ctx context.Context, msg sqstypes.Message) error {
+	_, err := a.sqsClient.DeleteMessage(ctx, &sqs.DeleteMessageInput{
+		QueueUrl:      &a.queueURL,
+		ReceiptHandle: msg.ReceiptHandle,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to delete message: %w", err)
+	}
+
+	return nil
+}
+
+func (a *immediateAcknowledger) Reject(_ context.Context, _ sqstypes.Message) error {
+	//TODO: change visibility timeout to 0
+	return nil
+}
+
+type exponentialAcknowledger struct {
+	sqsClient sqsConnector
+	queueURL  string
+}
+
+func newExponentialAcknowledger(url string, client sqsConnector) acknowledger {
+
+}
+
+func (a *immediateAcknowledger) Ack(ctx context.Context, msg sqstypes.Message) error {
+	_, err := a.sqsClient.DeleteMessage(ctx, &sqs.DeleteMessageInput{
+		QueueUrl:      &a.queueURL,
+		ReceiptHandle: msg.ReceiptHandle,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to delete message: %w", err)
+	}
+
+	return nil
+}
+
+func (a *immediateAcknowledger) Reject(_ context.Context, _ sqstypes.Message) error {
+	//TODO: change visibility timeout to 0
+	return nil
+}
+
 // observableAcknowledger wraps an acknowledger with observability instrumentation
 type observableAcknowledger struct {
 	acknowledger acknowledger

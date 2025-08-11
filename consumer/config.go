@@ -36,6 +36,8 @@ type Config struct {
 	VisibilityTimeout       int32
 	ErrorNumberThreshold    int32
 	GracefulShutdownTimeout int32
+	AckStrategy             AcknowledgmentStrategy
+	Acknowledger            acknowledger
 }
 
 // Option is an interface that configures a consumer Config
@@ -62,6 +64,7 @@ func NewConfig(queueURL string, opts ...Option) (*Config, error) {
 		ErrorNumberThreshold:    DefaultErrorNumberThreshold,
 		GracefulShutdownTimeout: DefaultGracefulShutdownTimeout,
 		Observability:           observability.NewConfig(), // disabled by default
+		AckStrategy:             SyncAcknowledgment,
 	}
 
 	for _, opt := range opts {
@@ -132,6 +135,13 @@ func WithObservability(obs *observability.Config) Option {
 	})
 }
 
+// WithAcknowledgmentStrategy sets the observability configuration
+func WithAcknowledgmentStrategy(as AcknowledgmentStrategy) Option {
+	return option(func(c *Config) {
+		c.AckStrategy = as
+	})
+}
+
 func (c *Config) IsValid() (bool, error) { // nolint: cyclop
 	if c.QueueURL == "" {
 		return false, &WrongConfigError{Err: fmt.Errorf("queueURL is empty")}
@@ -161,6 +171,8 @@ func (c *Config) IsValid() (bool, error) { // nolint: cyclop
 	if c.VisibilityTimeout < 0 || c.VisibilityTimeout > 43200 {
 		return false, &WrongConfigError{Err: fmt.Errorf("visibilityTimeout must be between 0 and 43200")}
 	}
+
+	//TODO: validate AcknowledgmentStrategy
 
 	return true, nil
 }

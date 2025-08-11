@@ -95,9 +95,12 @@ func NewSQSConsumer[T any](
 			messageAdapter, tracer, metrics, cfg.QueueURL,
 		)
 
-		obsAcknowledger = newObservableAcknowledger(
-			newSyncAcknowledger(cfg.QueueURL, sqsClient), tracer, metrics, cfg.QueueURL,
+		baseAcknowledger = createAcknowledger(
+			cfg.AckStrategy,
+			cfg.QueueURL,
+			sqsClient,
 		)
+		obsAcknowledger = newObservableAcknowledger(baseAcknowledger, tracer, metrics, cfg.QueueURL)
 	)
 
 	obsMiddleware := observabilityMiddleware[T](tracer, metrics, cfg.QueueURL)
@@ -311,4 +314,5 @@ func newMessageHandlerFunc[T any](handler Handler[T]) HandlerFunc[T] {
 type sqsConnector interface {
 	ReceiveMessage(ctx context.Context, params *sqs.ReceiveMessageInput, optFns ...func(*sqs.Options)) (*sqs.ReceiveMessageOutput, error)
 	DeleteMessage(ctx context.Context, params *sqs.DeleteMessageInput, optFns ...func(*sqs.Options)) (*sqs.DeleteMessageOutput, error)
+	//TODO: add changeMessageVisibility
 }
