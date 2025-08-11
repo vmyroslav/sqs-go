@@ -1,0 +1,7 @@
+inpackage: true
+packages:
+  github.com/vmyroslav/sqs-go/consumer:
+    interfaces:
+      sqsConnector:
+        config:
+          filename: mock_sqs_connector.go

@@ -310,9 +310,9 @@ func newMessageHandlerFunc[T any](handler Handler[T]) HandlerFunc[T] {
 	}
 }
 
-//go:generate mockery --name=sqsConnector --filename=mock_sqs_connector.go --inpackage
+//go:generate mockery
 type sqsConnector interface {
 	ReceiveMessage(ctx context.Context, params *sqs.ReceiveMessageInput, optFns ...func(*sqs.Options)) (*sqs.ReceiveMessageOutput, error)
 	DeleteMessage(ctx context.Context, params *sqs.DeleteMessageInput, optFns ...func(*sqs.Options)) (*sqs.DeleteMessageOutput, error)
-	//TODO: add changeMessageVisibility
+	ChangeMessageVisibility(ctx context.Context, params *sqs.ChangeMessageVisibilityInput, optFns ...func(*sqs.Options)) (*sqs.ChangeMessageVisibilityOutput, error)
 }

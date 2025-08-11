@@ -70,10 +70,13 @@ type exponentialAcknowledger struct {
 }
 
 func newExponentialAcknowledger(url string, client sqsConnector) acknowledger {
-
+	return &exponentialAcknowledger{
+		sqsClient: client,
+		queueURL:  url,
+	}
 }
 
-func (a *immediateAcknowledger) Ack(ctx context.Context, msg sqstypes.Message) error {
+func (a *exponentialAcknowledger) Ack(ctx context.Context, msg sqstypes.Message) error {
 	_, err := a.sqsClient.DeleteMessage(ctx, &sqs.DeleteMessageInput{
 		QueueUrl:      &a.queueURL,
 		ReceiptHandle: msg.ReceiptHandle,
@@ -85,8 +88,8 @@ func (a *immediateAcknowledger) Ack(ctx context.Context, msg sqstypes.Message) e
 	return nil
 }
 
-func (a *immediateAcknowledger) Reject(_ context.Context, _ sqstypes.Message) error {
-	//TODO: change visibility timeout to 0
+func (a *exponentialAcknowledger) Reject(_ context.Context, _ sqstypes.Message) error {
+	//TODO: implement exponential backoff for retry
 	return nil
 }
 
