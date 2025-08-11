@@ -3,8 +3,11 @@ package consumer
 import (
 	"context"
 	"fmt"
+	"math"
+	"strconv"
 	"time"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/sqs"
 	sqstypes "github.com/aws/aws-sdk-go-v2/service/sqs/types"
 	"github.com/vmyroslav/sqs-go/consumer/observability"
@@ -40,7 +43,7 @@ type immediateAcknowledger struct {
 	queueURL  string
 }
 
-func newImmediateAcknowledger(url string, client sqsConnector) acknowledger {
+func newImmediateAcknowledger(url string, client sqsConnector) *immediateAcknowledger {
 	return &immediateAcknowledger{
 		sqsClient: client,
 		queueURL:  url,
@@ -59,8 +62,19 @@ func (a *immediateAcknowledger) Ack(ctx context.Context, msg sqstypes.Message) e
 	return nil
 }
 
-func (a *immediateAcknowledger) Reject(_ context.Context, _ sqstypes.Message) error {
-	//TODO: change visibility timeout to 0
+func (a *immediateAcknowledger) newVisibilityTimeoutInput(receiptHandle *string) *sqs.ChangeMessageVisibilityInput {
+	return &sqs.ChangeMessageVisibilityInput{
+		QueueUrl:          aws.String(a.queueURL),
+		ReceiptHandle:     receiptHandle,
+		VisibilityTimeout: 0,
+	}
+}
+
+func (a *immediateAcknowledger) Reject(ctx context.Context, msg sqstypes.Message) error {
+	if _, err := a.sqsClient.ChangeMessageVisibility(ctx, a.newVisibilityTimeoutInput(msg.ReceiptHandle)); err != nil {
+		return fmt.Errorf("change message visibility: msg: %s: %w", aws.ToString(msg.ReceiptHandle), err)
+	}
+
 	return nil
 }
 
@@ -69,7 +83,7 @@ type exponentialAcknowledger struct {
 	queueURL  string
 }
 
-func newExponentialAcknowledger(url string, client sqsConnector) acknowledger {
+func newExponentialAcknowledger(url string, client sqsConnector) *exponentialAcknowledger {
 	return &exponentialAcknowledger{
 		sqsClient: client,
 		queueURL:  url,
@@ -88,8 +102,33 @@ func (a *exponentialAcknowledger) Ack(ctx context.Context, msg sqstypes.Message)
 	return nil
 }
 
-func (a *exponentialAcknowledger) Reject(_ context.Context, _ sqstypes.Message) error {
-	//TODO: implement exponential backoff for retry
+func (a *exponentialAcknowledger) calculateVisibilityTimeout(msg sqstypes.Message) int32 {
+	baseDelay := 100 * time.Millisecond
+	maxDelay := 2000 * time.Millisecond
+
+	receiveCount := int32(1)
+
+	if attr, exists := msg.Attributes["ApproximateReceiveCount"]; exists {
+		if count, err := strconv.ParseInt(attr, 10, 32); err == nil {
+			receiveCount = int32(count)
+		}
+	}
+
+	delay := time.Duration(float64(baseDelay) * math.Pow(2, float64(receiveCount-1)))
+
+	return int32(max(delay, maxDelay).Seconds())
+}
+
+func (a *exponentialAcknowledger) Reject(ctx context.Context, msg sqstypes.Message) error {
+	_, err := a.sqsClient.ChangeMessageVisibility(ctx, &sqs.ChangeMessageVisibilityInput{
+		QueueUrl:          aws.String(a.queueURL),
+		ReceiptHandle:     msg.ReceiptHandle,
+		VisibilityTimeout: a.calculateVisibilityTimeout(msg),
+	})
+	if err != nil {
+		return fmt.Errorf("change message visibility with exponential backoff: msg: %s: %w", aws.ToString(msg.ReceiptHandle), err)
+	}
+
 	return nil
 }
 

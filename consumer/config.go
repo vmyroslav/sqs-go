@@ -135,7 +135,7 @@ func WithObservability(obs *observability.Config) Option {
 	})
 }
 
-// WithAcknowledgmentStrategy sets the observability configuration
+// WithAcknowledgmentStrategy sets the [AcknowledgmentStrategy]
 func WithAcknowledgmentStrategy(as AcknowledgmentStrategy) Option {
 	return option(func(c *Config) {
 		c.AckStrategy = as
