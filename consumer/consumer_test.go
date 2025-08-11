@@ -416,3 +416,7 @@ func (m *mockSQSConnector) ReceiveMessage(_ context.Context, _ *sqs.ReceiveMessa
 func (m *mockSQSConnector) DeleteMessage(_ context.Context, _ *sqs.DeleteMessageInput, _ ...func(*sqs.Options)) (*sqs.DeleteMessageOutput, error) {
 	return nil, nil // nolint: nilnil
 }
+
+func (m *mockSQSConnector) ChangeMessageVisibility(_ context.Context, _ *sqs.ChangeMessageVisibilityInput, _ ...func(*sqs.Options)) (*sqs.ChangeMessageVisibilityOutput, error) {
+	return nil, nil // nolint: nilnil
+}

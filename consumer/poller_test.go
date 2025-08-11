@@ -34,7 +34,7 @@ func TestSqsPoller_Poll(t *testing.T) { // nolint: gocognit
 	// Test case 1: Successful polling of messages
 	t.Run("successful polling", func(t *testing.T) {
 		var (
-			sqsClient   = newMockSqsConnector(t)
+			sqsClient   = newMocksqsConnector(t)
 			ctx, cancel = context.WithCancel(context.Background())
 			messagesCh  = make(chan sqstypes.Message, 100)
 			logger      = slog.New(slog.DiscardHandler)
@@ -133,7 +133,7 @@ func TestSqsPoller_Poll(t *testing.T) { // nolint: gocognit
 	// Test case 2: Proper finishing of the processor when the context is done
 	t.Run("context done", func(t *testing.T) {
 		var (
-			sqsClient   = newMockSqsConnector(t)
+			sqsClient   = newMocksqsConnector(t)
 			ctx, cancel = context.WithTimeout(context.Background(), 100*time.Millisecond)
 			logger      = slog.New(slog.DiscardHandler)
 		)
@@ -196,7 +196,7 @@ func TestSqsPoller_Poll(t *testing.T) { // nolint: gocognit
 			ctx, cancel = context.WithCancel(context.Background())
 			messagesCh  = make(chan sqstypes.Message, 100)
 			errCh       = make(chan error, 1)
-			sqsClient   = newMockSqsConnector(t)
+			sqsClient   = newMocksqsConnector(t)
 			logger      = slog.New(slog.DiscardHandler)
 		)
 
@@ -231,7 +231,7 @@ func TestSqsPoller_Poll(t *testing.T) { // nolint: gocognit
 			messagesCh  = make(chan sqstypes.Message, 100)
 			errCh       = make(chan error, 1)
 			errorCount  int32
-			sqsClient   = newMockSqsConnector(t)
+			sqsClient   = newMocksqsConnector(t)
 			logger      = slog.New(slog.DiscardHandler)
 		)
 

@@ -36,7 +36,7 @@ func TestSyncAcknowledger_Ack(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			sqsClient := newMockSqsConnector(t)
+			sqsClient := newMocksqsConnector(t)
 			ack := newSyncAcknowledger("testQueue", sqsClient)
 
 			msg := sqstypes.Message{
@@ -64,7 +64,7 @@ func TestSyncAcknowledger_Ack(t *testing.T) {
 }
 
 func TestSyncAcknowledger_Reject(t *testing.T) {
-	sqsClient := newMockSqsConnector(t)
+	sqsClient := newMocksqsConnector(t)
 	ack := newSyncAcknowledger("testQueue", sqsClient)
 
 	msg := sqstypes.Message{
@@ -76,4 +76,106 @@ func TestSyncAcknowledger_Reject(t *testing.T) {
 
 	require.NoError(t, err)
 	sqsClient.AssertExpectations(t)
+}
+
+func TestImmediateAcknowledger_Ack(t *testing.T) {
+	tests := []struct {
+		name          string
+		deleteMessage func(ctx context.Context, params *sqs.DeleteMessageInput, optFns ...func(*sqs.Options)) (*sqs.DeleteMessageOutput, error)
+		wantErr       bool
+	}{
+		{
+			name: "DeleteMessage success",
+			deleteMessage: func(_ context.Context, _ *sqs.DeleteMessageInput, _ ...func(*sqs.Options)) (*sqs.DeleteMessageOutput, error) {
+				return &sqs.DeleteMessageOutput{}, nil
+			},
+			wantErr: false,
+		},
+		{
+			name: "DeleteMessage error",
+			deleteMessage: func(_ context.Context, _ *sqs.DeleteMessageInput, _ ...func(*sqs.Options)) (*sqs.DeleteMessageOutput, error) {
+				return nil, errors.New("delete message error")
+			},
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			sqsClient := newMocksqsConnector(t)
+			ack := newSyncAcknowledger("testQueue", sqsClient)
+
+			msg := sqstypes.Message{
+				MessageId:     aws.String("1"),
+				ReceiptHandle: aws.String("handle"),
+			}
+
+			sqsClient.On(
+				"DeleteMessage",
+				mock.Anything,
+				mock.Anything,
+			).Return(tt.deleteMessage)
+
+			err := ack.Ack(context.Background(), msg)
+
+			if tt.wantErr {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+			}
+
+			sqsClient.AssertExpectations(t)
+		})
+	}
+}
+
+func TestExponentialAcknowledger_Ack(t *testing.T) {
+	tests := []struct {
+		name          string
+		deleteMessage func(ctx context.Context, params *sqs.DeleteMessageInput, optFns ...func(*sqs.Options)) (*sqs.DeleteMessageOutput, error)
+		wantErr       bool
+	}{
+		{
+			name: "DeleteMessage success",
+			deleteMessage: func(_ context.Context, _ *sqs.DeleteMessageInput, _ ...func(*sqs.Options)) (*sqs.DeleteMessageOutput, error) {
+				return &sqs.DeleteMessageOutput{}, nil
+			},
+			wantErr: false,
+		},
+		{
+			name: "DeleteMessage error",
+			deleteMessage: func(_ context.Context, _ *sqs.DeleteMessageInput, _ ...func(*sqs.Options)) (*sqs.DeleteMessageOutput, error) {
+				return nil, errors.New("delete message error")
+			},
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			sqsClient := newMocksqsConnector(t)
+			ack := newSyncAcknowledger("testQueue", sqsClient)
+
+			msg := sqstypes.Message{
+				MessageId:     aws.String("1"),
+				ReceiptHandle: aws.String("handle"),
+			}
+
+			sqsClient.On(
+				"DeleteMessage",
+				mock.Anything,
+				mock.Anything,
+			).Return(tt.deleteMessage)
+
+			err := ack.Ack(context.Background(), msg)
+
+			if tt.wantErr {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+			}
+
+			sqsClient.AssertExpectations(t)
+		})
+	}
 }

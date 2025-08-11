@@ -244,7 +244,7 @@ func (c *SQSConsumer[T]) Consume(ctx context.Context, queueURL string, messageHa
 
 		return nil
 	case err := <-pollerErrCh:
-		c.logger.Error("poller stopped unexpectedly", "error", err)
+		c.logger.ErrorContext(ctx, "poller stopped unexpectedly", "error", err) //nolint:noctx // force using ErrorContext
 
 		return err
 	case err := <-processErrCh:
@@ -279,7 +279,7 @@ func (c *SQSConsumer[T]) Close() error {
 	// announce our intent to close
 	c.isClosing = true
 
-	c.logger.Debug("closing SQS consumer")
+	c.logger.Debug("closing SQS consumer") //nolint:noctx // force using DebugContext
 
 	c.stopSignalCh <- struct{}{}
 
@@ -287,11 +287,11 @@ func (c *SQSConsumer[T]) Close() error {
 
 	select {
 	case <-c.stoppedCh:
-		c.logger.Debug("SQS consumer stopped")
+		c.logger.Debug("SQS consumer stopped") //nolint:noctx // force using DebugContext
 
 		return nil
 	case <-time.After(time.Duration(c.cfg.GracefulShutdownTimeout) * time.Second):
-		c.logger.Warn("SQS consumer did not stop in time")
+		c.logger.Warn("SQS consumer did not stop in time") //nolint:noctx // force using WarnContext
 
 		return fmt.Errorf("SQS consumer did not stop in time")
 	}

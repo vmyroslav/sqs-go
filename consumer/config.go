@@ -16,6 +16,7 @@ const (
 	DefaultVisibilityTimeout       = 30
 	DefaultErrorNumberThreshold    = -1
 	DefaultGracefulShutdownTimeout = 30
+	DefaultAcknowledgmentStrategy  = SyncAcknowledgment
 )
 
 type WrongConfigError struct {
@@ -29,6 +30,7 @@ func (e *WrongConfigError) Error() string {
 type Config struct {
 	Observability           *observability.Config
 	QueueURL                string
+	AckStrategy             AcknowledgmentStrategy
 	ProcessorWorkerPoolSize int32
 	PollerWorkerPoolSize    int32
 	MaxNumberOfMessages     int32
@@ -36,8 +38,6 @@ type Config struct {
 	VisibilityTimeout       int32
 	ErrorNumberThreshold    int32
 	GracefulShutdownTimeout int32
-	AckStrategy             AcknowledgmentStrategy
-	Acknowledger            acknowledger
 }
 
 // Option is an interface that configures a consumer Config
@@ -64,7 +64,7 @@ func NewConfig(queueURL string, opts ...Option) (*Config, error) {
 		ErrorNumberThreshold:    DefaultErrorNumberThreshold,
 		GracefulShutdownTimeout: DefaultGracefulShutdownTimeout,
 		Observability:           observability.NewConfig(), // disabled by default
-		AckStrategy:             SyncAcknowledgment,
+		AckStrategy:             DefaultAcknowledgmentStrategy,
 	}
 
 	for _, opt := range opts {
@@ -171,8 +171,6 @@ func (c *Config) IsValid() (bool, error) { // nolint: cyclop
 	if c.VisibilityTimeout < 0 || c.VisibilityTimeout > 43200 {
 		return false, &WrongConfigError{Err: fmt.Errorf("visibilityTimeout must be between 0 and 43200")}
 	}
-
-	//TODO: validate AcknowledgmentStrategy
 
 	return true, nil
 }

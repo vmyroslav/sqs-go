@@ -57,7 +57,7 @@ func Test_Process_WhenMessagesChannelIsClosed(t *testing.T) {
 			WorkerPoolSize: 2,
 			QueueURL:       "test-queue-url",
 		}
-		sqsClient = newMockSqsConnector(t)
+		sqsClient = newMocksqsConnector(t)
 		handler   = HandlerFunc[sqstypes.Message](func(_ context.Context, _ sqstypes.Message) error {
 			return nil
 		})
@@ -103,7 +103,7 @@ func Test_Process_WhenContextIsCancelled_ExitsWithoutError(t *testing.T) {
 			WorkerPoolSize: 2,
 			QueueURL:       "test-queue-url",
 		}
-		sqsClient = newMockSqsConnector(t)
+		sqsClient = newMocksqsConnector(t)
 		logger    = slog.New(slog.NewJSONHandler(os.Stdout, nil))
 		handler   = HandlerFunc[sqstypes.Message](func(_ context.Context, _ sqstypes.Message) error {
 			return nil
