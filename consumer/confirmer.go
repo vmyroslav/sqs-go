@@ -38,19 +38,19 @@ func (a *syncAcknowledger) Ack(ctx context.Context, msg sqstypes.Message) error 
 
 func (a *syncAcknowledger) Reject(_ context.Context, _ sqstypes.Message) error { return nil }
 
-type immediateAcknowledger struct {
+type immediateRejector struct {
 	sqsClient sqsConnector
 	queueURL  string
 }
 
-func newImmediateAcknowledger(url string, client sqsConnector) *immediateAcknowledger {
-	return &immediateAcknowledger{
+func newImmediateRejector(url string, client sqsConnector) *immediateRejector {
+	return &immediateRejector{
 		sqsClient: client,
 		queueURL:  url,
 	}
 }
 
-func (a *immediateAcknowledger) Ack(ctx context.Context, msg sqstypes.Message) error {
+func (a *immediateRejector) Ack(ctx context.Context, msg sqstypes.Message) error {
 	_, err := a.sqsClient.DeleteMessage(ctx, &sqs.DeleteMessageInput{
 		QueueUrl:      &a.queueURL,
 		ReceiptHandle: msg.ReceiptHandle,
@@ -62,7 +62,7 @@ func (a *immediateAcknowledger) Ack(ctx context.Context, msg sqstypes.Message) e
 	return nil
 }
 
-func (a *immediateAcknowledger) newVisibilityTimeoutInput(receiptHandle *string) *sqs.ChangeMessageVisibilityInput {
+func (a *immediateRejector) newVisibilityTimeoutInput(receiptHandle *string) *sqs.ChangeMessageVisibilityInput {
 	return &sqs.ChangeMessageVisibilityInput{
 		QueueUrl:          aws.String(a.queueURL),
 		ReceiptHandle:     receiptHandle,
@@ -70,7 +70,7 @@ func (a *immediateAcknowledger) newVisibilityTimeoutInput(receiptHandle *string)
 	}
 }
 
-func (a *immediateAcknowledger) Reject(ctx context.Context, msg sqstypes.Message) error {
+func (a *immediateRejector) Reject(ctx context.Context, msg sqstypes.Message) error {
 	if _, err := a.sqsClient.ChangeMessageVisibility(ctx, a.newVisibilityTimeoutInput(msg.ReceiptHandle)); err != nil {
 		return fmt.Errorf("change message visibility: msg: %s: %w", aws.ToString(msg.ReceiptHandle), err)
 	}
@@ -78,19 +78,19 @@ func (a *immediateAcknowledger) Reject(ctx context.Context, msg sqstypes.Message
 	return nil
 }
 
-type exponentialAcknowledger struct {
+type exponentialRejector struct {
 	sqsClient sqsConnector
 	queueURL  string
 }
 
-func newExponentialAcknowledger(url string, client sqsConnector) *exponentialAcknowledger {
-	return &exponentialAcknowledger{
+func newExponentialRejector(url string, client sqsConnector) *exponentialRejector {
+	return &exponentialRejector{
 		sqsClient: client,
 		queueURL:  url,
 	}
 }
 
-func (a *exponentialAcknowledger) Ack(ctx context.Context, msg sqstypes.Message) error {
+func (a *exponentialRejector) Ack(ctx context.Context, msg sqstypes.Message) error {
 	_, err := a.sqsClient.DeleteMessage(ctx, &sqs.DeleteMessageInput{
 		QueueUrl:      &a.queueURL,
 		ReceiptHandle: msg.ReceiptHandle,
@@ -102,7 +102,7 @@ func (a *exponentialAcknowledger) Ack(ctx context.Context, msg sqstypes.Message)
 	return nil
 }
 
-func (a *exponentialAcknowledger) calculateVisibilityTimeout(msg sqstypes.Message) int32 {
+func (a *exponentialRejector) calculateVisibilityTimeout(msg sqstypes.Message) int32 {
 	baseDelay := 100 * time.Millisecond
 	maxDelay := 2000 * time.Millisecond
 
@@ -119,7 +119,7 @@ func (a *exponentialAcknowledger) calculateVisibilityTimeout(msg sqstypes.Messag
 	return int32(max(delay, maxDelay).Seconds())
 }
 
-func (a *exponentialAcknowledger) Reject(ctx context.Context, msg sqstypes.Message) error {
+func (a *exponentialRejector) Reject(ctx context.Context, msg sqstypes.Message) error {
 	_, err := a.sqsClient.ChangeMessageVisibility(ctx, &sqs.ChangeMessageVisibilityInput{
 		QueueUrl:          aws.String(a.queueURL),
 		ReceiptHandle:     msg.ReceiptHandle,

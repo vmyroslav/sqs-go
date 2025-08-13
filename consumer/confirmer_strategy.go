@@ -3,12 +3,12 @@ package consumer
 type AcknowledgmentStrategy string
 
 const (
-	// SyncAcknowledgment is default acknowledgement strategy. It doesn't reject message.
+	// SyncAcknowledgment is default acknowledge strategy. It doesn't reject message.
 	SyncAcknowledgment AcknowledgmentStrategy = "sync"
-	// ImmediateAcknowledgment changes VisibilityTimeout of the message to 0 after unsuccessful processing.
-	ImmediateAcknowledgment AcknowledgmentStrategy = "immediate"
-	// ExponentialAcknowledgment exponentially changing VisibilityTimeout of the message after unsuccessful processing.
-	ExponentialAcknowledgment AcknowledgmentStrategy = "exponential"
+	// ImmediateRejector changes VisibilityTimeout of the message to 0 after unsuccessful processing.
+	ImmediateRejector AcknowledgmentStrategy = "immediate"
+	// ExponentialRejector exponentially changing VisibilityTimeout of the message after unsuccessful processing.
+	ExponentialRejector AcknowledgmentStrategy = "exponential"
 )
 
 func createAcknowledger(
@@ -17,10 +17,10 @@ func createAcknowledger(
 	sqsClient sqsConnector,
 ) acknowledger {
 	switch strategy {
-	case ImmediateAcknowledgment:
-		return newImmediateAcknowledger(queueURL, sqsClient)
-	case ExponentialAcknowledgment:
-		return newExponentialAcknowledger(queueURL, sqsClient)
+	case ImmediateRejector:
+		return newImmediateRejector(queueURL, sqsClient)
+	case ExponentialRejector:
+		return newExponentialRejector(queueURL, sqsClient)
 	case SyncAcknowledgment:
 		fallthrough //nolint:gocritic
 	default:

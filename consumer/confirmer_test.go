@@ -79,7 +79,7 @@ func TestSyncAcknowledger_Reject(t *testing.T) {
 	sqsClient.AssertExpectations(t)
 }
 
-func TestImmediateAcknowledger_Ack(t *testing.T) {
+func TestImmediateRejector_Ack(t *testing.T) {
 	tests := []struct {
 		name          string
 		deleteMessage func(ctx context.Context, params *sqs.DeleteMessageInput, optFns ...func(*sqs.Options)) (*sqs.DeleteMessageOutput, error)
@@ -130,8 +130,8 @@ func TestImmediateAcknowledger_Ack(t *testing.T) {
 	}
 }
 
-func TestImmediateAcknowledger_newVisibilityTimeoutInput(t *testing.T) {
-	a := newImmediateAcknowledger("http://localhost:4566/000000000000/queue", nil)
+func TestImmediateRejector_newVisibilityTimeoutInput(t *testing.T) {
+	a := newImmediateRejector("http://localhost:4566/000000000000/queue", nil)
 
 	assert.NotPanics(t, func() {
 		id := "bdgsbsdbg"
@@ -172,7 +172,7 @@ func TestImmediateAcknowledger_Reject(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			sqsClient := newMocksqsConnector(t)
-			ack := newImmediateAcknowledger("testQueue", sqsClient)
+			ack := newImmediateRejector("testQueue", sqsClient)
 
 			msg := sqstypes.Message{
 				MessageId:     aws.String("1"),
@@ -198,7 +198,7 @@ func TestImmediateAcknowledger_Reject(t *testing.T) {
 	}
 }
 
-func TestExponentialAcknowledger_Reject(t *testing.T) {
+func TestExponentialRejector_Reject(t *testing.T) {
 	tests := []struct {
 		name                    string
 		messageAttributes       map[string]string
@@ -234,7 +234,7 @@ func TestExponentialAcknowledger_Reject(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			sqsClient := newMocksqsConnector(t)
-			ack := newExponentialAcknowledger("testQueue", sqsClient)
+			ack := newExponentialRejector("testQueue", sqsClient)
 
 			msg := sqstypes.Message{
 				MessageId:     aws.String("1"),
@@ -261,8 +261,8 @@ func TestExponentialAcknowledger_Reject(t *testing.T) {
 	}
 }
 
-func TestExponentialAcknowledger_calculateVisibilityTimeout(t *testing.T) {
-	ack := newExponentialAcknowledger("testQueue", nil)
+func TestExponentialRejector_calculateVisibilityTimeout(t *testing.T) {
+	ack := newExponentialRejector("testQueue", nil)
 
 	tests := []struct {
 		name              string
@@ -303,7 +303,7 @@ func TestExponentialAcknowledger_calculateVisibilityTimeout(t *testing.T) {
 	}
 }
 
-func TestExponentialAcknowledger_Ack(t *testing.T) {
+func TestExponentialRejector_Ack(t *testing.T) {
 	tests := []struct {
 		name          string
 		deleteMessage func(ctx context.Context, params *sqs.DeleteMessageInput, optFns ...func(*sqs.Options)) (*sqs.DeleteMessageOutput, error)

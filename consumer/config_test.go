@@ -19,7 +19,7 @@ func TestNewConfig(t *testing.T) {
 			WithVisibilityTimeout(30),
 			WithErrorNumberThreshold(-1),
 			WithGracefulShutdownTimeout(30),
-			WithAcknowledgmentStrategy(ImmediateAcknowledgment),
+			WithAcknowledgmentStrategy(ImmediateRejector),
 		)
 
 		require.NoError(t, err)
@@ -31,7 +31,7 @@ func TestNewConfig(t *testing.T) {
 		assert.Equal(t, int32(30), config.VisibilityTimeout)
 		assert.Equal(t, int32(-1), config.ErrorNumberThreshold)
 		assert.Equal(t, int32(30), config.GracefulShutdownTimeout)
-		assert.Equal(t, ImmediateAcknowledgment, config.AckStrategy)
+		assert.Equal(t, ImmediateRejector, config.AckStrategy)
 		assert.NotNil(t, config.Observability)
 	})
 
