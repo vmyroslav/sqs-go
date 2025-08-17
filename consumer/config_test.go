@@ -19,6 +19,7 @@ func TestNewConfig(t *testing.T) {
 			WithVisibilityTimeout(30),
 			WithErrorNumberThreshold(-1),
 			WithGracefulShutdownTimeout(30),
+			WithAcknowledgmentStrategy(ImmediateRejector),
 		)
 
 		require.NoError(t, err)
@@ -30,6 +31,7 @@ func TestNewConfig(t *testing.T) {
 		assert.Equal(t, int32(30), config.VisibilityTimeout)
 		assert.Equal(t, int32(-1), config.ErrorNumberThreshold)
 		assert.Equal(t, int32(30), config.GracefulShutdownTimeout)
+		assert.Equal(t, ImmediateRejector, config.AckStrategy)
 		assert.NotNil(t, config.Observability)
 	})
 
@@ -45,6 +47,8 @@ func TestNewConfig(t *testing.T) {
 		assert.Equal(t, int32(DefaultVisibilityTimeout), config.VisibilityTimeout)
 		assert.Equal(t, int32(DefaultErrorNumberThreshold), config.ErrorNumberThreshold)
 		assert.Equal(t, int32(DefaultGracefulShutdownTimeout), config.GracefulShutdownTimeout)
+		assert.Equal(t, SyncAcknowledgment, config.AckStrategy)
+
 		assert.NotNil(t, config.Observability)
 	})
 }
@@ -190,6 +194,22 @@ func TestConfig_IsValid(t *testing.T) {
 			},
 			want:    false,
 			wantErr: true,
+		},
+		{
+			name: "Invalid Config - Invalid AcknowledgmentStrategy",
+			config: &Config{
+				QueueURL:                "http://localhost:4566/000000000000/queue",
+				ProcessorWorkerPoolSize: 2,
+				PollerWorkerPoolSize:    2,
+				MaxNumberOfMessages:     10,
+				WaitTimeSeconds:         1,
+				VisibilityTimeout:       1,
+				ErrorNumberThreshold:    1,
+				GracefulShutdownTimeout: 30,
+				AckStrategy:             AcknowledgmentStrategy("unknown"),
+			},
+			want:    true,
+			wantErr: false,
 		},
 	}
 	for _, tt := range tests {

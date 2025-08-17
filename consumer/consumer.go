@@ -95,9 +95,12 @@ func NewSQSConsumer[T any](
 			messageAdapter, tracer, metrics, cfg.QueueURL,
 		)
 
-		obsAcknowledger = newObservableAcknowledger(
-			newSyncAcknowledger(cfg.QueueURL, sqsClient), tracer, metrics, cfg.QueueURL,
+		baseAcknowledger = createAcknowledger(
+			cfg.AckStrategy,
+			cfg.QueueURL,
+			sqsClient,
 		)
+		obsAcknowledger = newObservableAcknowledger(baseAcknowledger, tracer, metrics, cfg.QueueURL)
 	)
 
 	obsMiddleware := observabilityMiddleware[T](tracer, metrics, cfg.QueueURL)
@@ -241,7 +244,7 @@ func (c *SQSConsumer[T]) Consume(ctx context.Context, queueURL string, messageHa
 
 		return nil
 	case err := <-pollerErrCh:
-		c.logger.Error("poller stopped unexpectedly", "error", err)
+		c.logger.ErrorContext(ctx, "poller stopped unexpectedly", "error", err) //nolint:noctx // force using ErrorContext
 
 		return err
 	case err := <-processErrCh:
@@ -276,7 +279,7 @@ func (c *SQSConsumer[T]) Close() error {
 	// announce our intent to close
 	c.isClosing = true
 
-	c.logger.Debug("closing SQS consumer")
+	c.logger.Debug("closing SQS consumer") //nolint:noctx // force using DebugContext
 
 	c.stopSignalCh <- struct{}{}
 
@@ -284,11 +287,11 @@ func (c *SQSConsumer[T]) Close() error {
 
 	select {
 	case <-c.stoppedCh:
-		c.logger.Debug("SQS consumer stopped")
+		c.logger.Debug("SQS consumer stopped") //nolint:noctx // force using DebugContext
 
 		return nil
 	case <-time.After(time.Duration(c.cfg.GracefulShutdownTimeout) * time.Second):
-		c.logger.Warn("SQS consumer did not stop in time")
+		c.logger.Warn("SQS consumer did not stop in time") //nolint:noctx // force using WarnContext
 
 		return fmt.Errorf("SQS consumer did not stop in time")
 	}
@@ -307,8 +310,9 @@ func newMessageHandlerFunc[T any](handler Handler[T]) HandlerFunc[T] {
 	}
 }
 
-//go:generate mockery --name=sqsConnector --filename=mock_sqs_connector.go --inpackage
+//go:generate mockery
 type sqsConnector interface {
 	ReceiveMessage(ctx context.Context, params *sqs.ReceiveMessageInput, optFns ...func(*sqs.Options)) (*sqs.ReceiveMessageOutput, error)
 	DeleteMessage(ctx context.Context, params *sqs.DeleteMessageInput, optFns ...func(*sqs.Options)) (*sqs.DeleteMessageOutput, error)
+	ChangeMessageVisibility(ctx context.Context, params *sqs.ChangeMessageVisibilityInput, optFns ...func(*sqs.Options)) (*sqs.ChangeMessageVisibilityOutput, error)
 }

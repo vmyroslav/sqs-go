@@ -16,6 +16,7 @@ const (
 	DefaultVisibilityTimeout       = 30
 	DefaultErrorNumberThreshold    = -1
 	DefaultGracefulShutdownTimeout = 30
+	DefaultAcknowledgmentStrategy  = SyncAcknowledgment
 )
 
 type WrongConfigError struct {
@@ -29,6 +30,7 @@ func (e *WrongConfigError) Error() string {
 type Config struct {
 	Observability           *observability.Config
 	QueueURL                string
+	AckStrategy             AcknowledgmentStrategy
 	ProcessorWorkerPoolSize int32
 	PollerWorkerPoolSize    int32
 	MaxNumberOfMessages     int32
@@ -62,6 +64,7 @@ func NewConfig(queueURL string, opts ...Option) (*Config, error) {
 		ErrorNumberThreshold:    DefaultErrorNumberThreshold,
 		GracefulShutdownTimeout: DefaultGracefulShutdownTimeout,
 		Observability:           observability.NewConfig(), // disabled by default
+		AckStrategy:             DefaultAcknowledgmentStrategy,
 	}
 
 	for _, opt := range opts {
@@ -129,6 +132,13 @@ func WithGracefulShutdownTimeout(timeout int32) Option {
 func WithObservability(obs *observability.Config) Option {
 	return option(func(c *Config) {
 		c.Observability = obs
+	})
+}
+
+// WithAcknowledgmentStrategy sets the [AcknowledgmentStrategy]
+func WithAcknowledgmentStrategy(as AcknowledgmentStrategy) Option {
+	return option(func(c *Config) {
+		c.AckStrategy = as
 	})
 }
 
