@@ -37,6 +37,7 @@ tasks:
     desc: Update Go dependencies
     cmds:
       - go get -u ./...
+      - for dir in examples/*/; do [ -f "$dir/go.mod" ] && (cd "$dir" && go get -u ./...); done
 
 # #################################################
 # CI/CD Tasks
