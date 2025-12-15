@@ -39,7 +39,7 @@ jobs:
           echo "branch_name=${{ github.ref_name }}" >> $GITHUB_OUTPUT
 
       - name: Lint
-        uses: golangci/golangci-lint-action@v8
+        uses: golangci/golangci-lint-action@v9
 
       - name: Tests
         run: task test
