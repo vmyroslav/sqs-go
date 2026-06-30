@@ -108,7 +108,7 @@ func (a *exponentialRejector) calculateVisibilityTimeout(msg sqstypes.Message) i
 
 	receiveCount := int32(1)
 
-	if attr, exists := msg.Attributes["ApproximateReceiveCount"]; exists {
+	if attr, exists := msg.Attributes[string(sqstypes.MessageSystemAttributeNameApproximateReceiveCount)]; exists {
 		if count, err := strconv.ParseInt(attr, 10, 32); err == nil {
 			receiveCount = int32(count)
 		}

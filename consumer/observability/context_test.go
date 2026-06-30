@@ -11,6 +11,8 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
+const testKey = "test-key"
+
 func TestExtractTraceContext(t *testing.T) {
 	t.Parallel()
 	t.Run("With trace context in message attributes", func(t *testing.T) {
@@ -117,7 +119,7 @@ func TestSQSMessageCarrier(t *testing.T) {
 			t.Parallel()
 
 			attrs := map[string]sqstypes.MessageAttributeValue{
-				"test-key": {
+				testKey: {
 					DataType:    new("String"),
 					StringValue: new("test-value"),
 				},
@@ -126,7 +128,7 @@ func TestSQSMessageCarrier(t *testing.T) {
 			carrier := &sqsMessageCarrier{}
 			carrier.Reset(attrs)
 
-			value := carrier.Get("test-key")
+			value := carrier.Get(testKey)
 			assert.Equal(t, "test-value", value)
 		})
 
@@ -214,10 +216,10 @@ func TestSQSMessageCarrier(t *testing.T) {
 			carrier := &sqsMessageCarrier{}
 			carrier.Reset(nil)
 
-			carrier.Set("test-key", "test-value")
+			carrier.Set(testKey, "test-value")
 
 			assert.NotNil(t, carrier.attributes)
-			value := carrier.Get("test-key")
+			value := carrier.Get(testKey)
 			assert.Equal(t, "test-value", value)
 		})
 	})
@@ -317,14 +319,14 @@ func TestCarrierPool(t *testing.T) {
 
 		// Use the carrier
 		attrs := map[string]sqstypes.MessageAttributeValue{
-			"test-key": {
+			testKey: {
 				DataType:    new("String"),
 				StringValue: new("test-value"),
 			},
 		}
 		carrier1.Reset(attrs)
 
-		assert.Equal(t, "test-value", carrier1.Get("test-key"))
+		assert.Equal(t, "test-value", carrier1.Get(testKey))
 
 		carrierPool.Put(carrier1)
 
@@ -384,14 +386,14 @@ func TestCarrierPoolConcurrency(t *testing.T) {
 
 					// Use the carrier
 					attrs := map[string]sqstypes.MessageAttributeValue{
-						"test-key": {
+						testKey: {
 							DataType:    new("String"),
 							StringValue: new("test-value"),
 						},
 					}
 					carrier.Reset(attrs)
 
-					value := carrier.Get("test-key")
+					value := carrier.Get(testKey)
 					assert.Equal(t, "test-value", value)
 
 					carrierPool.Put(carrier)

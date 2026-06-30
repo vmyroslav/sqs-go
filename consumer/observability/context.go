@@ -78,10 +78,3 @@ func (c *sqsMessageCarrier) Keys() []string {
 
 	return keys
 }
-
-// toPtr returns a pointer to the given value of any type.
-//
-//go:fix inline
-func toPtr[T any](v T) *T {
-	return new(v)
-}

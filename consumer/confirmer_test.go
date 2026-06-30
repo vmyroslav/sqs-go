@@ -13,6 +13,14 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+const (
+	testNameDeleteSuccess  = "DeleteMessage success"
+	testNameDeleteError    = "DeleteMessage error"
+	testNameChangeVisError = "ChangeMessageVisibility error"
+
+	testAttrApproximateReceiveCount = "ApproximateReceiveCount"
+)
+
 func TestSyncAcknowledger_Ack(t *testing.T) {
 	tests := []struct {
 		name          string
@@ -20,14 +28,14 @@ func TestSyncAcknowledger_Ack(t *testing.T) {
 		wantErr       bool
 	}{
 		{
-			name: "DeleteMessage success",
+			name: testNameDeleteSuccess,
 			deleteMessage: func(_ context.Context, _ *sqs.DeleteMessageInput, _ ...func(*sqs.Options)) (*sqs.DeleteMessageOutput, error) {
 				return &sqs.DeleteMessageOutput{}, nil
 			},
 			wantErr: false,
 		},
 		{
-			name: "DeleteMessage error",
+			name: testNameDeleteError,
 			deleteMessage: func(_ context.Context, _ *sqs.DeleteMessageInput, _ ...func(*sqs.Options)) (*sqs.DeleteMessageOutput, error) {
 				return nil, errors.New("delete message error")
 			},
@@ -86,14 +94,14 @@ func TestImmediateRejector_Ack(t *testing.T) {
 		wantErr       bool
 	}{
 		{
-			name: "DeleteMessage success",
+			name: testNameDeleteSuccess,
 			deleteMessage: func(_ context.Context, _ *sqs.DeleteMessageInput, _ ...func(*sqs.Options)) (*sqs.DeleteMessageOutput, error) {
 				return &sqs.DeleteMessageOutput{}, nil
 			},
 			wantErr: false,
 		},
 		{
-			name: "DeleteMessage error",
+			name: testNameDeleteError,
 			deleteMessage: func(_ context.Context, _ *sqs.DeleteMessageInput, _ ...func(*sqs.Options)) (*sqs.DeleteMessageOutput, error) {
 				return nil, errors.New("delete message error")
 			},
@@ -131,7 +139,7 @@ func TestImmediateRejector_Ack(t *testing.T) {
 }
 
 func TestImmediateRejector_newVisibilityTimeoutInput(t *testing.T) {
-	a := newImmediateRejector("http://localhost:4566/000000000000/queue", nil)
+	a := newImmediateRejector(testQueueURL, nil)
 
 	assert.NotPanics(t, func() {
 		id := "bdgsbsdbg"
@@ -143,7 +151,7 @@ func TestImmediateRejector_newVisibilityTimeoutInput(t *testing.T) {
 		assert.NotNil(t, cmvi.VisibilityTimeout)
 		assert.Zero(t, cmvi.VisibilityTimeout)
 		assert.NotNil(t, cmvi.QueueUrl)
-		assert.Equal(t, "http://localhost:4566/000000000000/queue", *cmvi.QueueUrl)
+		assert.Equal(t, testQueueURL, *cmvi.QueueUrl)
 	})
 }
 
@@ -161,7 +169,7 @@ func TestImmediateAcknowledger_Reject(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name: "ChangeMessageVisibility error",
+			name: testNameChangeVisError,
 			changeMessageVisibility: func(_ context.Context, _ *sqs.ChangeMessageVisibilityInput, _ ...func(*sqs.Options)) (*sqs.ChangeMessageVisibilityOutput, error) {
 				return nil, errors.New("change message visibility error")
 			},
@@ -207,7 +215,7 @@ func TestExponentialRejector_Reject(t *testing.T) {
 	}{
 		{
 			name:              "ChangeMessageVisibility success - first retry",
-			messageAttributes: map[string]string{"ApproximateReceiveCount": "1"},
+			messageAttributes: map[string]string{testAttrApproximateReceiveCount: "1"},
 			changeMessageVisibility: func(_ context.Context, _ *sqs.ChangeMessageVisibilityInput, _ ...func(*sqs.Options)) (*sqs.ChangeMessageVisibilityOutput, error) {
 				return &sqs.ChangeMessageVisibilityOutput{}, nil
 			},
@@ -215,15 +223,15 @@ func TestExponentialRejector_Reject(t *testing.T) {
 		},
 		{
 			name:              "ChangeMessageVisibility success - second retry",
-			messageAttributes: map[string]string{"ApproximateReceiveCount": "2"},
+			messageAttributes: map[string]string{testAttrApproximateReceiveCount: "2"},
 			changeMessageVisibility: func(_ context.Context, _ *sqs.ChangeMessageVisibilityInput, _ ...func(*sqs.Options)) (*sqs.ChangeMessageVisibilityOutput, error) {
 				return &sqs.ChangeMessageVisibilityOutput{}, nil
 			},
 			wantErr: false,
 		},
 		{
-			name:              "ChangeMessageVisibility error",
-			messageAttributes: map[string]string{"ApproximateReceiveCount": "1"},
+			name:              testNameChangeVisError,
+			messageAttributes: map[string]string{testAttrApproximateReceiveCount: "1"},
 			changeMessageVisibility: func(_ context.Context, _ *sqs.ChangeMessageVisibilityInput, _ ...func(*sqs.Options)) (*sqs.ChangeMessageVisibilityOutput, error) {
 				return nil, errors.New("change message visibility error")
 			},
@@ -271,17 +279,17 @@ func TestExponentialRejector_calculateVisibilityTimeout(t *testing.T) {
 	}{
 		{
 			name:              "first retry",
-			messageAttributes: map[string]string{"ApproximateReceiveCount": "1"},
+			messageAttributes: map[string]string{testAttrApproximateReceiveCount: "1"},
 			expectedTimeout:   0, // 100ms base delay
 		},
 		{
 			name:              "second retry",
-			messageAttributes: map[string]string{"ApproximateReceiveCount": "2"},
+			messageAttributes: map[string]string{testAttrApproximateReceiveCount: "2"},
 			expectedTimeout:   0, // 200ms
 		},
 		{
 			name:              "third retry",
-			messageAttributes: map[string]string{"ApproximateReceiveCount": "3"},
+			messageAttributes: map[string]string{testAttrApproximateReceiveCount: "3"},
 			expectedTimeout:   0, // 400ms
 		},
 		{
@@ -310,14 +318,14 @@ func TestExponentialRejector_Ack(t *testing.T) {
 		wantErr       bool
 	}{
 		{
-			name: "DeleteMessage success",
+			name: testNameDeleteSuccess,
 			deleteMessage: func(_ context.Context, _ *sqs.DeleteMessageInput, _ ...func(*sqs.Options)) (*sqs.DeleteMessageOutput, error) {
 				return &sqs.DeleteMessageOutput{}, nil
 			},
 			wantErr: false,
 		},
 		{
-			name: "DeleteMessage error",
+			name: testNameDeleteError,
 			deleteMessage: func(_ context.Context, _ *sqs.DeleteMessageInput, _ ...func(*sqs.Options)) (*sqs.DeleteMessageOutput, error) {
 				return nil, errors.New("delete message error")
 			},

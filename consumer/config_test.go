@@ -11,7 +11,7 @@ import (
 
 func TestNewConfig(t *testing.T) {
 	t.Run("NewConfig with functional options", func(t *testing.T) {
-		config, err := NewConfig("http://localhost:4566/000000000000/queue",
+		config, err := NewConfig(testQueueURL,
 			WithProcessorWorkerPoolSize(10),
 			WithPollerWorkerPoolSize(2),
 			WithMaxNumberOfMessages(10),
@@ -23,7 +23,7 @@ func TestNewConfig(t *testing.T) {
 		)
 
 		require.NoError(t, err)
-		assert.Equal(t, "http://localhost:4566/000000000000/queue", config.QueueURL)
+		assert.Equal(t, testQueueURL, config.QueueURL)
 		assert.Equal(t, int32(10), config.ProcessorWorkerPoolSize)
 		assert.Equal(t, int32(2), config.PollerWorkerPoolSize)
 		assert.Equal(t, int32(10), config.MaxNumberOfMessages)
@@ -36,10 +36,10 @@ func TestNewConfig(t *testing.T) {
 	})
 
 	t.Run("NewConfig with default values", func(t *testing.T) {
-		config, err := NewConfig("http://localhost:4566/000000000000/queue")
+		config, err := NewConfig(testQueueURL)
 
 		require.NoError(t, err)
-		assert.Equal(t, "http://localhost:4566/000000000000/queue", config.QueueURL)
+		assert.Equal(t, testQueueURL, config.QueueURL)
 		assert.Equal(t, int32(DefaultProcessorWorkerPoolSize), config.ProcessorWorkerPoolSize)
 		assert.Equal(t, int32(DefaultPollerWorkerPoolSize), config.PollerWorkerPoolSize)
 		assert.Equal(t, int32(DefaultMaxNumberOfMessages), config.MaxNumberOfMessages)
@@ -63,7 +63,7 @@ func TestConfig_IsValid(t *testing.T) {
 		{
 			name: "Valid Config",
 			config: &Config{
-				QueueURL:                "http://localhost:4566/000000000000/queue",
+				QueueURL:                testQueueURL,
 				ProcessorWorkerPoolSize: 10,
 				PollerWorkerPoolSize:    2,
 				MaxNumberOfMessages:     10,
@@ -108,7 +108,7 @@ func TestConfig_IsValid(t *testing.T) {
 		{
 			name: "Invalid Config - Invalid ProcessorWorkerPoolSize",
 			config: &Config{
-				QueueURL:                "http://localhost:4566/000000000000/queue",
+				QueueURL:                testQueueURL,
 				ProcessorWorkerPoolSize: 0,
 				PollerWorkerPoolSize:    2,
 				MaxNumberOfMessages:     10,
@@ -123,7 +123,7 @@ func TestConfig_IsValid(t *testing.T) {
 		{
 			name: "Invalid Config - Invalid PollerWorkerPoolSize",
 			config: &Config{
-				QueueURL:                "http://localhost:4566/000000000000/queue",
+				QueueURL:                testQueueURL,
 				ProcessorWorkerPoolSize: 1,
 				PollerWorkerPoolSize:    0,
 				MaxNumberOfMessages:     10,
@@ -138,7 +138,7 @@ func TestConfig_IsValid(t *testing.T) {
 		{
 			name: "Invalid Config - Invalid MaxNumberOfMessages",
 			config: &Config{
-				QueueURL:                "http://localhost:4566/000000000000/queue",
+				QueueURL:                testQueueURL,
 				ProcessorWorkerPoolSize: 2,
 				PollerWorkerPoolSize:    2,
 				MaxNumberOfMessages:     100,
@@ -153,7 +153,7 @@ func TestConfig_IsValid(t *testing.T) {
 		{
 			name: "Invalid Config - Invalid WaitTimeSeconds",
 			config: &Config{
-				QueueURL:                "http://localhost:4566/000000000000/queue",
+				QueueURL:                testQueueURL,
 				ProcessorWorkerPoolSize: 2,
 				PollerWorkerPoolSize:    2,
 				MaxNumberOfMessages:     10,
@@ -168,7 +168,7 @@ func TestConfig_IsValid(t *testing.T) {
 		{
 			name: "Invalid Config - Invalid VisibilityTimeout Negative",
 			config: &Config{
-				QueueURL:                "http://localhost:4566/000000000000/queue",
+				QueueURL:                testQueueURL,
 				ProcessorWorkerPoolSize: 2,
 				PollerWorkerPoolSize:    2,
 				MaxNumberOfMessages:     10,
@@ -183,7 +183,7 @@ func TestConfig_IsValid(t *testing.T) {
 		{
 			name: "Invalid Config - Invalid VisibilityTimeout Too Large",
 			config: &Config{
-				QueueURL:                "http://localhost:4566/000000000000/queue",
+				QueueURL:                testQueueURL,
 				ProcessorWorkerPoolSize: 2,
 				PollerWorkerPoolSize:    2,
 				MaxNumberOfMessages:     10,
@@ -198,7 +198,7 @@ func TestConfig_IsValid(t *testing.T) {
 		{
 			name: "Invalid Config - Invalid AcknowledgmentStrategy",
 			config: &Config{
-				QueueURL:                "http://localhost:4566/000000000000/queue",
+				QueueURL:                testQueueURL,
 				ProcessorWorkerPoolSize: 2,
 				PollerWorkerPoolSize:    2,
 				MaxNumberOfMessages:     10,
@@ -249,7 +249,7 @@ func TestNewInvalidConfig(t *testing.T) {
 }
 
 func TestNewDefaultConfig(t *testing.T) {
-	queueURL := "http://localhost:4566/000000000000/queue"
+	queueURL := testQueueURL
 	config, err := NewConfig(queueURL) // No options means default values
 	require.NoError(t, err)
 
@@ -273,7 +273,7 @@ func TestNewDefaultConfig(t *testing.T) {
 
 func TestFunctionalOptions(t *testing.T) {
 	t.Run("WithProcessorWorkerPoolSize", func(t *testing.T) {
-		config, err := NewConfig("http://localhost:4566/000000000000/queue",
+		config, err := NewConfig(testQueueURL,
 			WithProcessorWorkerPoolSize(20),
 		)
 		require.NoError(t, err)
@@ -281,7 +281,7 @@ func TestFunctionalOptions(t *testing.T) {
 	})
 
 	t.Run("WithPollerWorkerPoolSize", func(t *testing.T) {
-		config, err := NewConfig("http://localhost:4566/000000000000/queue",
+		config, err := NewConfig(testQueueURL,
 			WithPollerWorkerPoolSize(5),
 		)
 		require.NoError(t, err)
@@ -289,7 +289,7 @@ func TestFunctionalOptions(t *testing.T) {
 	})
 
 	t.Run("WithMaxNumberOfMessages", func(t *testing.T) {
-		config, err := NewConfig("http://localhost:4566/000000000000/queue",
+		config, err := NewConfig(testQueueURL,
 			WithMaxNumberOfMessages(8),
 		)
 		require.NoError(t, err)
@@ -297,7 +297,7 @@ func TestFunctionalOptions(t *testing.T) {
 	})
 
 	t.Run("WithWaitTimeSeconds", func(t *testing.T) {
-		config, err := NewConfig("http://localhost:4566/000000000000/queue",
+		config, err := NewConfig(testQueueURL,
 			WithWaitTimeSeconds(15),
 		)
 		require.NoError(t, err)
@@ -305,7 +305,7 @@ func TestFunctionalOptions(t *testing.T) {
 	})
 
 	t.Run("WithVisibilityTimeout", func(t *testing.T) {
-		config, err := NewConfig("http://localhost:4566/000000000000/queue",
+		config, err := NewConfig(testQueueURL,
 			WithVisibilityTimeout(60),
 		)
 		require.NoError(t, err)
@@ -313,7 +313,7 @@ func TestFunctionalOptions(t *testing.T) {
 	})
 
 	t.Run("WithErrorNumberThreshold", func(t *testing.T) {
-		config, err := NewConfig("http://localhost:4566/000000000000/queue",
+		config, err := NewConfig(testQueueURL,
 			WithErrorNumberThreshold(10),
 		)
 		require.NoError(t, err)
@@ -321,7 +321,7 @@ func TestFunctionalOptions(t *testing.T) {
 	})
 
 	t.Run("WithGracefulShutdownTimeout", func(t *testing.T) {
-		config, err := NewConfig("http://localhost:4566/000000000000/queue",
+		config, err := NewConfig(testQueueURL,
 			WithGracefulShutdownTimeout(60),
 		)
 		require.NoError(t, err)
@@ -332,7 +332,7 @@ func TestFunctionalOptions(t *testing.T) {
 		observabilityConfig := observability.NewConfig(
 			observability.WithServiceName("custom-service"),
 		)
-		config, err := NewConfig("http://localhost:4566/000000000000/queue",
+		config, err := NewConfig(testQueueURL,
 			WithObservability(observabilityConfig),
 		)
 		require.NoError(t, err)
@@ -341,7 +341,7 @@ func TestFunctionalOptions(t *testing.T) {
 	})
 
 	t.Run("Multiple options", func(t *testing.T) {
-		config, err := NewConfig("http://localhost:4566/000000000000/queue",
+		config, err := NewConfig(testQueueURL,
 			WithProcessorWorkerPoolSize(15),
 			WithPollerWorkerPoolSize(3),
 			WithMaxNumberOfMessages(5),

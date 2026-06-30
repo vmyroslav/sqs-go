@@ -17,6 +17,8 @@ import (
 	"github.com/vmyroslav/sqs-go/consumer/observability"
 )
 
+const testQueueURLShort = "test-queue-url"
+
 // createTestObservability creates no-op observability components for tests
 func createTestObservability() (observability.SQSTracer, *observability.Config) {
 	obsCfg := observability.NewConfig() // Uses noop providers by default
@@ -32,7 +34,7 @@ func Test_Process_WhenHandlerWorkerPoolSizeIsZero_ReturnsError(t *testing.T) {
 	p := newProcessorSQS[sqstypes.Message](
 		processorConfig{
 			WorkerPoolSize: 0,
-			QueueURL:       "test-queue-url",
+			QueueURL:       testQueueURLShort,
 		},
 		NewDummyAdapter[sqstypes.Message](),
 		&mockAcknowledger{},
@@ -55,7 +57,7 @@ func Test_Process_WhenMessagesChannelIsClosed(t *testing.T) {
 		ctx, cancel = context.WithTimeout(context.Background(), 10*time.Millisecond)
 		pCfg        = processorConfig{
 			WorkerPoolSize: 2,
-			QueueURL:       "test-queue-url",
+			QueueURL:       testQueueURLShort,
 		}
 		sqsClient = newMocksqsConnector(t)
 		handler   = HandlerFunc[sqstypes.Message](func(_ context.Context, _ sqstypes.Message) error {
@@ -101,7 +103,7 @@ func Test_Process_WhenContextIsCancelled_ExitsWithoutError(t *testing.T) {
 		errCh    = make(chan error, 1)
 		pCfg     = processorConfig{
 			WorkerPoolSize: 2,
-			QueueURL:       "test-queue-url",
+			QueueURL:       testQueueURLShort,
 		}
 		sqsClient = newMocksqsConnector(t)
 		logger    = slog.New(slog.NewJSONHandler(os.Stdout, nil))
@@ -138,7 +140,7 @@ func Test_Process_WhenMessageIsReceived_CallsHandlerWithCorrectMessage(t *testin
 		msgs = make(chan sqstypes.Message, 1)
 		pCfg = processorConfig{
 			WorkerPoolSize: 2,
-			QueueURL:       "test-queue-url",
+			QueueURL:       testQueueURLShort,
 		}
 		mockAck = newMockAcknowledger(nil, 1)
 		logger  = slog.New(slog.NewJSONHandler(os.Stdout, nil))
@@ -188,7 +190,7 @@ func Test_Process_HandlingAckErrors(t *testing.T) {
 		msgs = make(chan sqstypes.Message, 1)
 		pCfg = processorConfig{
 			WorkerPoolSize: 2,
-			QueueURL:       "test-queue-url",
+			QueueURL:       testQueueURLShort,
 		}
 		logger  = slog.New(slog.DiscardHandler)
 		msgBody = "original message"
@@ -268,7 +270,7 @@ func Test_Process_WhenHandlerReturnsError_MessageRejected(t *testing.T) {
 		msgs = make(chan sqstypes.Message, 1)
 		pCfg = processorConfig{
 			WorkerPoolSize: 1,
-			QueueURL:       "test-queue-url",
+			QueueURL:       testQueueURLShort,
 		}
 		logger       = slog.New(slog.DiscardHandler)
 		msgBody      = "test message"
