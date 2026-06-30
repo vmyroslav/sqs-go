@@ -53,12 +53,8 @@ func (p *processorSQS[T]) Process(ctx context.Context, msgs <-chan sqstypes.Mess
 		return &WrongConfigError{Err: fmt.Errorf("invalid worker pool size: %d", p.cfg.WorkerPoolSize)}
 	}
 
-	for i := 0; i < poolSize; i++ {
-		wg.Add(1)
-
-		go func() {
-			defer wg.Done()
-
+	for range poolSize {
+		wg.Go(func() {
 			for {
 				select {
 				case <-ctx.Done():
@@ -72,7 +68,7 @@ func (p *processorSQS[T]) Process(ctx context.Context, msgs <-chan sqstypes.Mess
 					p.processMessage(ctx, msg, handler)
 				}
 			}
-		}()
+		})
 	}
 
 	wg.Wait()

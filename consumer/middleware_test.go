@@ -14,7 +14,7 @@ type mockHandler struct {
 	err error
 }
 
-func (m *mockHandler) Handle(_ context.Context, _ interface{}) error {
+func (m *mockHandler) Handle(_ context.Context, _ any) error {
 	return m.err
 }
 

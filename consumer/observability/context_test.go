@@ -31,8 +31,8 @@ func TestExtractTraceContext(t *testing.T) {
 		msg := sqstypes.Message{
 			MessageAttributes: map[string]sqstypes.MessageAttributeValue{
 				"traceparent": {
-					DataType:    toPtr("String"),
-					StringValue: toPtr("00-0102030405060708090a0b0c0d0e0f10-1112131415161718-01"),
+					DataType:    new("String"),
+					StringValue: new("00-0102030405060708090a0b0c0d0e0f10-1112131415161718-01"),
 				},
 			},
 		}
@@ -56,8 +56,8 @@ func TestExtractTraceContext(t *testing.T) {
 		msg := sqstypes.Message{
 			MessageAttributes: map[string]sqstypes.MessageAttributeValue{
 				"other-attribute": {
-					DataType:    toPtr("String"),
-					StringValue: toPtr("some-value"),
+					DataType:    new("String"),
+					StringValue: new("some-value"),
 				},
 			},
 		}
@@ -118,8 +118,8 @@ func TestSQSMessageCarrier(t *testing.T) {
 
 			attrs := map[string]sqstypes.MessageAttributeValue{
 				"test-key": {
-					DataType:    toPtr("String"),
-					StringValue: toPtr("test-value"),
+					DataType:    new("String"),
+					StringValue: new("test-value"),
 				},
 			}
 
@@ -135,8 +135,8 @@ func TestSQSMessageCarrier(t *testing.T) {
 
 			attrs := map[string]sqstypes.MessageAttributeValue{
 				"other-key": {
-					DataType:    toPtr("String"),
-					StringValue: toPtr("other-value"),
+					DataType:    new("String"),
+					StringValue: new("other-value"),
 				},
 			}
 
@@ -152,7 +152,7 @@ func TestSQSMessageCarrier(t *testing.T) {
 
 			attrs := map[string]sqstypes.MessageAttributeValue{
 				"nil-key": {
-					DataType:    toPtr("String"),
+					DataType:    new("String"),
 					StringValue: nil,
 				},
 			}
@@ -194,8 +194,8 @@ func TestSQSMessageCarrier(t *testing.T) {
 
 			attrs := map[string]sqstypes.MessageAttributeValue{
 				"existing-key": {
-					DataType:    toPtr("String"),
-					StringValue: toPtr("old-value"),
+					DataType:    new("String"),
+					StringValue: new("old-value"),
 				},
 			}
 
@@ -229,16 +229,16 @@ func TestSQSMessageCarrier(t *testing.T) {
 
 			attrs := map[string]sqstypes.MessageAttributeValue{
 				"key1": {
-					DataType:    toPtr("String"),
-					StringValue: toPtr("value1"),
+					DataType:    new("String"),
+					StringValue: new("value1"),
 				},
 				"key2": {
-					DataType:    toPtr("String"),
-					StringValue: toPtr("value2"),
+					DataType:    new("String"),
+					StringValue: new("value2"),
 				},
 				"key3": {
-					DataType:    toPtr("String"),
-					StringValue: toPtr("value3"),
+					DataType:    new("String"),
+					StringValue: new("value3"),
 				},
 			}
 
@@ -280,15 +280,15 @@ func TestSQSMessageCarrier(t *testing.T) {
 
 			oldAttrs := map[string]sqstypes.MessageAttributeValue{
 				"old-key": {
-					DataType:    toPtr("String"),
-					StringValue: toPtr("old-value"),
+					DataType:    new("String"),
+					StringValue: new("old-value"),
 				},
 			}
 
 			newAttrs := map[string]sqstypes.MessageAttributeValue{
 				"new-key": {
-					DataType:    toPtr("String"),
-					StringValue: toPtr("new-value"),
+					DataType:    new("String"),
+					StringValue: new("new-value"),
 				},
 			}
 
@@ -318,8 +318,8 @@ func TestCarrierPool(t *testing.T) {
 		// Use the carrier
 		attrs := map[string]sqstypes.MessageAttributeValue{
 			"test-key": {
-				DataType:    toPtr("String"),
-				StringValue: toPtr("test-value"),
+				DataType:    new("String"),
+				StringValue: new("test-value"),
 			},
 		}
 		carrier1.Reset(attrs)
@@ -335,8 +335,8 @@ func TestCarrierPool(t *testing.T) {
 		// Test that the second carrier works correctly
 		attrs2 := map[string]sqstypes.MessageAttributeValue{
 			"test-key2": {
-				DataType:    toPtr("String"),
-				StringValue: toPtr("test-value2"),
+				DataType:    new("String"),
+				StringValue: new("test-value2"),
 			},
 		}
 		carrier2.Reset(attrs2)
@@ -376,21 +376,17 @@ func TestCarrierPoolConcurrency(t *testing.T) {
 
 		var wg sync.WaitGroup
 
-		for i := 0; i < numGoroutines; i++ {
-			wg.Add(1)
-
-			go func() {
-				defer wg.Done()
-
-				for j := 0; j < numIterations; j++ {
+		for range numGoroutines {
+			wg.Go(func() {
+				for range numIterations {
 					carrier := carrierPool.Get().(*sqsMessageCarrier) // nolint:errcheck // sync.Pool.Get never returns an error
 					assert.NotNil(t, carrier)
 
 					// Use the carrier
 					attrs := map[string]sqstypes.MessageAttributeValue{
 						"test-key": {
-							DataType:    toPtr("String"),
-							StringValue: toPtr("test-value"),
+							DataType:    new("String"),
+							StringValue: new("test-value"),
 						},
 					}
 					carrier.Reset(attrs)
@@ -400,7 +396,7 @@ func TestCarrierPoolConcurrency(t *testing.T) {
 
 					carrierPool.Put(carrier)
 				}
-			}()
+			})
 		}
 
 		wg.Wait()
@@ -413,7 +409,7 @@ func TestToPtr(t *testing.T) {
 		t.Parallel()
 
 		input := "test-string"
-		ptr := toPtr(input)
+		ptr := new(input)
 
 		assert.NotNil(t, ptr)
 		assert.Equal(t, input, *ptr)
@@ -423,7 +419,7 @@ func TestToPtr(t *testing.T) {
 		t.Parallel()
 
 		input := ""
-		ptr := toPtr(input)
+		ptr := new(input)
 
 		assert.NotNil(t, ptr)
 		assert.Equal(t, input, *ptr)
@@ -433,7 +429,7 @@ func TestToPtr(t *testing.T) {
 		t.Parallel()
 
 		input := 42
-		ptr := toPtr(input)
+		ptr := new(input)
 
 		assert.NotNil(t, ptr)
 		assert.Equal(t, input, *ptr)
@@ -443,7 +439,7 @@ func TestToPtr(t *testing.T) {
 		t.Parallel()
 
 		input := true
-		ptr := toPtr(input)
+		ptr := new(input)
 
 		assert.NotNil(t, ptr)
 		assert.Equal(t, input, *ptr)
@@ -457,7 +453,7 @@ func TestToPtr(t *testing.T) {
 		}
 
 		input := testStruct{Field: "test"}
-		ptr := toPtr(input)
+		ptr := new(input)
 
 		assert.NotNil(t, ptr)
 		assert.Equal(t, input, *ptr)

@@ -66,7 +66,7 @@ func (p *sqsPoller) Poll(parentCtx context.Context, queueURL string, ch chan<- s
 		return errors.New("worker pool size should be greater than 0")
 	}
 
-	for i := 0; i < poolSize; i++ {
+	for i := range poolSize {
 		wg.Add(1)
 
 		go p.runWorker(ctx, &wg, errCh, cancel, queueURL, ch, i)

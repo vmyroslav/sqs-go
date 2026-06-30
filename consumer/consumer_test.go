@@ -359,7 +359,7 @@ func newSQSConnectorMock(t *testing.T, numMsgs int) *mockSQSConnector {
 	messageChan := make(chan sqstypes.Message, numMsgs)
 	expectedMessages := make(map[string]sqstypes.Message)
 
-	for i := 0; i < numMsgs; i++ {
+	for i := range numMsgs {
 		m := mockMessage{
 			Key:     fmt.Sprintf("message-key-%d", i),
 			Payload: fmt.Sprintf("message-payload-%d", i),
@@ -399,7 +399,7 @@ func (m *mockSQSConnector) ReceiveMessage(_ context.Context, _ *sqs.ReceiveMessa
 	messages := make([]sqstypes.Message, 0)
 	numMessagesToRead := rand.Intn(m.maxNumberOfMessages) + 1
 
-	for i := 0; i < numMessagesToRead; i++ {
+	for range numMessagesToRead {
 		select {
 		case msg := <-m.messageChan:
 			messages = append(messages, msg)

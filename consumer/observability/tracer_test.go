@@ -106,7 +106,7 @@ func TestOtelTracer_Span(t *testing.T) {
 		ctx := context.Background()
 
 		spanCtx, span := tracer.Span(ctx, "test-span-with-attrs",
-			WithMessageID(toPtr("test-msg-id")),
+			WithMessageID(new("test-msg-id")),
 			WithQueueURL("test-queue-url"),
 			WithAction(ActionProcess),
 		)
@@ -350,7 +350,7 @@ func TestTraceOptions(t *testing.T) {
 		t.Run("With valid message ID", func(t *testing.T) {
 			t.Parallel()
 
-			opt := WithMessageID(toPtr("test-msg-id"))
+			opt := WithMessageID(new("test-msg-id"))
 			// Should not panic when used
 			assert.NotPanics(t, func() { _ = opt })
 		})
@@ -366,7 +366,7 @@ func TestTraceOptions(t *testing.T) {
 		t.Run("With empty message ID", func(t *testing.T) {
 			t.Parallel()
 
-			opt := WithMessageID(toPtr(""))
+			opt := WithMessageID(new(""))
 			// Should return a no-op option that doesn't panic
 			assert.NotPanics(t, func() { _ = opt })
 		})

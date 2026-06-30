@@ -16,7 +16,8 @@ import (
 func newMocksqsConnector(t interface {
 	mock.TestingT
 	Cleanup(func())
-}) *mocksqsConnector {
+},
+) *mocksqsConnector {
 	mock := &mocksqsConnector{}
 	mock.Mock.Test(t)
 

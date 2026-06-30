@@ -51,7 +51,7 @@ func TestSqsPoller_Poll(t *testing.T) { // nolint: gocognit
 			cancel()
 		}()
 
-		for i := 0; i < 100; i++ {
+		for i := range 100 {
 			messageID := fmt.Sprintf("testMessageID%d", i)
 			messageBody := fmt.Sprintf("testMessageBody%d", i)
 			msg := sqstypes.Message{
@@ -69,7 +69,7 @@ func TestSqsPoller_Poll(t *testing.T) { // nolint: gocognit
 			messages := make([]sqstypes.Message, 0)
 			numMessagesToRead := rand.Intn(int(cfg.MaxNumberOfMessages)) + 1
 
-			for i := 0; i < numMessagesToRead; i++ {
+			for range numMessagesToRead {
 				select {
 				case msg := <-messageChan:
 					messages = append(messages, msg)

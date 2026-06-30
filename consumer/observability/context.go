@@ -10,7 +10,7 @@ import (
 
 // carrierPool provides a pool of reusable sqsMessageCarrier instances to eliminate per-message allocations
 var carrierPool = sync.Pool{
-	New: func() interface{} {
+	New: func() any {
 		return &sqsMessageCarrier{}
 	},
 }
@@ -61,7 +61,7 @@ func (c *sqsMessageCarrier) Set(key, value string) {
 	}
 
 	c.attributes[key] = sqstypes.MessageAttributeValue{
-		DataType:    toPtr("String"),
+		DataType:    new("String"),
 		StringValue: &value,
 	}
 }
@@ -80,6 +80,8 @@ func (c *sqsMessageCarrier) Keys() []string {
 }
 
 // toPtr returns a pointer to the given value of any type.
+//
+//go:fix inline
 func toPtr[T any](v T) *T {
-	return &v
+	return new(v)
 }

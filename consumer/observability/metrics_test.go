@@ -327,13 +327,13 @@ func TestOtelMetrics_ConcurrentAccess(t *testing.T) {
 		results := make([]metric.Int64Counter, numGoroutines)
 		errors := make([]error, numGoroutines)
 
-		for i := 0; i < numGoroutines; i++ {
+		for i := range numGoroutines {
 			wg.Add(1)
 
 			go func(index int) {
 				defer wg.Done()
 
-				for j := 0; j < numIterations; j++ {
+				for range numIterations {
 					counter, err := m.getOrCreateCounter(MetricPollingRequests)
 					results[index] = counter
 					errors[index] = err
@@ -378,7 +378,7 @@ func TestOtelMetrics_ConcurrentAccess(t *testing.T) {
 		ctx := context.Background()
 
 		// Test concurrent access to different metric types
-		for i := 0; i < numGoroutines; i++ {
+		for i := range numGoroutines {
 			wg.Add(1)
 
 			go func(index int) {
@@ -425,7 +425,7 @@ func TestOtelMetrics_FactoryCallCount(t *testing.T) {
 
 		results := make([]metric.Int64Counter, numGoroutines)
 
-		for i := 0; i < numGoroutines; i++ {
+		for i := range numGoroutines {
 			wg.Add(1)
 
 			go func(index int) {
