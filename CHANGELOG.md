@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- Updated Go version to 1.25.x across all modules (root and examples)
+- Updated all dependencies to latest versions in root and example modules
+
 ## [v0.3.0] - 2025-07-13
 
 ### Added
@@ -87,5 +91,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Task runner for build automation
 - golangci-lint for code quality
 
-[Unreleased]: https://github.com/vmyroslav/sqs-go/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/vmyroslav/sqs-go/compare/v0.3.0...HEAD
+[v0.3.0]: https://github.com/vmyroslav/sqs-go/compare/v0.2.0...v0.3.0
+[v0.2.0]: https://github.com/vmyroslav/sqs-go/compare/v0.1.0...v0.2.0
 [v0.1.0]: https://github.com/vmyroslav/sqs-go/releases/tag/v0.1.0

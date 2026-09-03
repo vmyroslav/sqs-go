@@ -9,14 +9,14 @@ on:
     types: [opened, synchronize, reopened]
 
 env:
-  GO_VERSION: "1.24.x"
+  GO_VERSION: "1.25.x"
 
 jobs:
   lint:
     name: lint
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Install Go
         uses: actions/setup-go@v7
@@ -26,7 +26,7 @@ jobs:
       - name: lint
         uses: golangci/golangci-lint-action@v9
         with:
-          version: v2.3.0
+          version: v2.13.2
 
   test:
     name: test
@@ -39,10 +39,10 @@ jobs:
           go-version: ${{ env.GO_VERSION }}
 
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Go cache
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: |
             ~/go/pkg/mod
@@ -52,7 +52,7 @@ jobs:
             ${{ runner.os }}-go-${{ env.GO_VERSION }}-cache
 
       - name: Install Task
-        uses: arduino/setup-task@v2
+        uses: arduino/setup-task@v3
         with:
           version: 3.x
           repo-token: ${{ secrets.GITHUB_TOKEN }}
@@ -61,7 +61,7 @@ jobs:
         run: task test
 
       - name: Submit coverage
-        uses: codecov/codecov-action@v6
+        uses: codecov/codecov-action@v7
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           slug: ${{ env.GITHUB_REPOSITORY }}
