@@ -81,6 +81,7 @@ linters:
       - linters:
           - cyclop
           - dupl
+          - goconst
           - gosec
           - govet
         path: _test\.go

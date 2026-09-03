@@ -35,9 +35,8 @@ func NewTracer(cfg *Config) SQSTracer {
 // Automatically includes default SQS messaging system attributes.
 func (t *otelTracer) Span(ctx context.Context, spanName string, opts ...SpanOption) (context.Context, trace.Span) {
 	// Automatically include default attributes for all SQS spans
-	defaultOpts := []SpanOption{
-		trace.WithAttributes(attribute.String("messaging.system", "aws-sqs")),
-	}
+	defaultOpts := make([]SpanOption, 0, 1+len(opts))
+	defaultOpts = append(defaultOpts, trace.WithAttributes(attribute.String("messaging.system", "aws-sqs")))
 	opts = append(defaultOpts, opts...)
 
 	return t.tracer.Start(ctx, spanName, opts...)

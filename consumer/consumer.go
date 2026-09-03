@@ -106,7 +106,8 @@ func NewSQSConsumer[T any](
 	obsMiddleware := observabilityMiddleware[T](tracer, metrics, cfg.QueueURL)
 
 	// inject observability middleware as FIRST middleware
-	allMiddlewares := []Middleware[T]{obsMiddleware}
+	allMiddlewares := make([]Middleware[T], 0, 1+len(middlewares))
+	allMiddlewares = append(allMiddlewares, obsMiddleware)
 	allMiddlewares = append(allMiddlewares, middlewares...)
 
 	c := &SQSConsumer[T]{
