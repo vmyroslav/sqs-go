@@ -1,87 +1,34 @@
 name: "Bug Report"
-description: "Create a report to help us improve."
+description: "Something isn't working as expected."
 labels: ["bug"]
 body:
-  - type: markdown
-    attributes:
-      value: |
-        Thank you for taking the time to fill out this bug report. Please provide as much detail as possible.
-
-  - type: checkboxes
-    id: prerequisites
-    attributes:
-      label: "Prerequisites"
-      description: "Please ensure you have completed the following steps."
-      options:
-        - label: "I have searched the existing issues and have not found a similar bug report."
-          required: true
-        - label: "I am using the latest version of the package."
-          required: true
-
   - type: textarea
     id: bug-description
     attributes:
-      label: "Bug Description"
-      description: "A clear and concise description of what the bug is."
-      placeholder: "When I do [...], [...] happens."
+      label: "What happened?"
+      description: "Describe the bug and what you expected to happen instead."
+      placeholder: "When I do [...], [...] happens. I expected [...]."
     validations:
       required: true
 
   - type: textarea
-    id: steps-to-reproduce
+    id: reproduction
     attributes:
-      label: "Steps to Reproduce"
-      description: "Please provide a minimal, reproducible code example. This helps us to quickly identify and fix the issue."
-      placeholder: |
-        1. **Code:**
-           ```go
-           package main
-        
-           import (
-           	"fmt"
-           	"your/package/path"
-           )
-        
-           func main() {
-           	// Your code demonstrating the bug
-           	fmt.Println("Running example...")
-           	// e.g., mypackage.DoSomethingThatFails()
-           }
-           ```
-        
-        2. **Command:**
-           ```sh
-           # The command you ran to see the error
-           go run main.go
-           ```
-        
-        3. **Output:**
-           ```
-           # The full output or panic you observed
-           panic: runtime error: ...
-           ```
-      render: "go"
+      label: "How to reproduce it"
+      description: "A minimal code example or steps that reproduce the issue. Include any error output or panic trace."
+    validations:
+      required: true
 
-  - type: textarea
-    id: expected-behavior
+  - type: input
+    id: library-version
     attributes:
-      label: "Expected Behavior"
-      description: "A clear and concise description of what you expected to happen."
-      placeholder: "I expected [...] to happen."
+      label: "sqs-go version"
+      placeholder: "v1.2.3 (from go.mod)"
     validations:
       required: true
 
   - type: input
     id: go-version
     attributes:
-      label: "Go Version"
-      description: "What version of Go are you using? (e.g., `go version`)"
-      placeholder: "go version go1.22.5"
-    validations:
-      required: true
-
-  - type: textarea
-    id: additional-context
-    attributes:
-      label: "Additional Context"
-      description: "Add any other context about the problem here. (e.g., logs, screenshots)"
+      label: "Go version"
+      placeholder: "go1.24.5"
